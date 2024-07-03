@@ -1,0 +1,525 @@
+---
+title: "4 Spectral Analysis and Filtering - 4.1 Cyclical Behavior and Periodicity"
+author: "Aaron Smith"
+date: "2023-03-15"
+output: html_document
+---
+
+------------------------------------------------------------------------------
+
+This code is modified from Time Series Analysis and Its Applications, by Robert H. Shumway, David S. Stoffer 
+https://github.com/nickpoison/tsa4
+
+The most recent version of the package can be found at
+https://github.com/nickpoison/astsa/
+
+You can find demonstrations of astsa capabilities at
+https://github.com/nickpoison/astsa/blob/master/fun_with_astsa/fun_with_astsa.md
+
+In addition, the News and ChangeLog files are at
+https://github.com/nickpoison/astsa/blob/master/NEWS.md.
+
+The webpages for the texts and some help on using R for time series analysis can be found at 
+https://nickpoison.github.io/.
+
+UCF students can download it for free through the library.
+
+------------------------------------------------------------------------------
+
+In this video we will look into modeling time series data using sine and cosine functions.
+
+We will use sine and cosine functions of different frequencies as vectors, and perform regression.
+
+------------------------------------------------------------------------------
+
+A cycle as one complete period of a sine or cosine function defined over a unit time interval. 
+
+Consider the periodic process
+
+$$
+x_t = A cos(2\pi \omega t + \phi) \\
+t \in \mathbb{Z} \\
+\omega \text{ frequency index in terms of cycles per unit time} \\
+A \text{ amplitude} \\
+\phi \text{ phase shift}
+$$
+
+Using the sum of angles formula, we get a better presentation for statistics.
+
+$$\begin{align}
+x_t =& A cos(2\pi \omega t + \phi) \\
+=& A cos(\phi)cos(2\pi \omega t) - A sin(\phi)sin(2\pi \omega t) \\
+=& U_1 cos(2\pi \omega t) + U_2 sin(2\pi \omega t) \\
+U_1 =& A cos(\phi) \\
+U_2 =& - A sin(\phi) \\
+A^2 =& U_1^2 + U_2^2 \\
+tan(\phi) =& \dfrac{-U_2}{U_1}
+\end{align}$$
+
+Notice that $A,\omega,\phi,U_1,U_2$ are constants with respect to  $t$.
+
+Typically the amplitude-phase constants are taken to be normally distributed.
+
+#### Theorem:
+
+$$
+A, \phi \text{ are independent, } A^2 \sim \chi^2_2,\phi \sim uniform(-\pi,\pi) \iff 
+U_1, U_2 \sim \ independent \ Normal(\mu = 0,\sigma^2 = 1) \\
+$$
+
+#### Proof:
+
+Let $U_1,U_2$ be standard bivariate normal with zero correlation.
+
+$$
+f(U_1,U_2)=\frac {1}{2\pi}\exp \left(-\frac {U_1^{2}+U_2^{2}}{2}\right)
+$$
+
+Let $A$ and $-\phi$ be the polar coordinates of $U_1,U_2$, 
+
+$$
+U_1 = A cos(-\phi) = A cos(\phi) \\
+U_2 = A sin(-\phi) = -A sin(\phi) \\
+A^2 = U_1^2 + U_2^2 \\
+tan(-\phi) = \dfrac{U_2}{U_1}
+$$
+
+$$
+f(A,\phi) = f(A cos(\phi),-A sin(\phi))\begin{vmatrix}\dfrac{\partial U_1}{\partial A} & \dfrac{\partial U_1}{\partial \phi} \\ \dfrac{\partial U_2}{\partial A} & \dfrac{\partial U_2}{\partial \phi} \end{vmatrix} \\
+=\frac {1}{2\pi}\exp \left(-\frac {A^2 cos^2(\phi)+A^2 sin^2(\phi)}{2}\right) \begin{vmatrix} \cos(\phi) & -A sin(\phi) \\ -sin(\phi) & A cos(\phi) \end{vmatrix} \\
+=\frac {1}{2\pi}\exp \left(-\frac {A^2}{2}\right) |-A| \\
+=\frac {1}{2\pi}A\exp \left(-\frac {A^2}{2}\right) \\
+f(A^2,\phi) =\frac {1}{2\pi}\sqrt{A^2}\exp \left(-\frac {A^2}{2}\right)\dfrac{1}{2\sqrt{A^2}} \\
+f(A^2,\phi) =\frac {1}{2\pi}\frac {1}{2\Gamma(2/2)}(A^2)^{2/2 - 1}\exp \left(-\frac {A^2}{2}\right) \\
+$$
+
+We can see that the distribution function factors into two subdistributions.
+
+$$
+uniform(-\pi,\pi) \ for \ \phi: \  \frac {1}{2\pi} \\
+\chi^2_2 \ for \ A^2: \ \frac {1}{2\Gamma(2/2)}(A^2)^{2/2 - 1}\exp \left(-\frac {A^2}{2}\right)
+$$
+
+For our modeling, we will loosen the requirements and assume
+
+$$
+correlation(U_1,U_2) = 0 \\
+E(U_i) = 0 \\
+V(U_i) = \sigma^2
+$$
+
+With these assumptions $x_t$ is stationary with $E(x_t) = 0$.
+
+To calculate the autocovariance let's define 
+
+$$\begin{align}
+\gamma_s(h) &= cov(x_{t+h},x_t) \\
+&= cov\left(U_1 cos(2\pi\omega t) + U_2 sin(2\pi \omega t),U_1 cos(2\pi\omega (t+h)) + U_2 sin(2\pi \omega (t+h))\right) \\
+&= 
+cov\left(U_1 cos(2\pi\omega t),U_1 cos(2\pi\omega (t+h))\right) +
+cov\left(U_1 cos(2\pi\omega t),U_2 sin(2\pi \omega (t+h))\right) +
+cov\left(U_2 sin(2\pi \omega t),U_1 cos(2\pi\omega (t+h))\right) +
+cov\left(U_2 sin(2\pi \omega t),U_2 sin(2\pi \omega (t+h))\right) \\
+&= 
+cos(2\pi\omega t) cos(2\pi\omega (t+h)) cov\left(U_1 ,U_1 \right) +
+cos(2\pi\omega t) sin(2\pi \omega (t+h)) cov\left(U_1 ,U_2 \right) +
+sin(2\pi \omega t) cos(2\pi\omega (t+h)) cov\left(U_2 ,U_1 \right) +
+sin(2\pi \omega t) sin(2\pi \omega (t+h)) cov\left(U_2 ,U_2 \right) \\
+&= 
+cos(2\pi\omega t) cos(2\pi\omega (t+h)) cov\left(U_1 ,U_1 \right) +
+0 +
+0 +
+sin(2\pi \omega t) sin(2\pi \omega (t+h)) cov\left(U_2 ,U_2 \right) \\
+&= \sigma^2 \left[cos(2\pi\omega t) cos(2\pi\omega (t+h))  + sin(2\pi \omega t) sin(2\pi \omega (t+h)) \right] \\
+&= \sigma^2 cos(2\pi\omega h)
+\end{align}$$
+
+Setting $h = 0$ we get the variance of our process.
+
+$$
+V(x_t) = \sigma^2
+$$
+
+If we observe $\widehat{U}_1,\widehat{U}_2$, then an estimate of the variance is
+
+$$
+S^2 = \dfrac{(\widehat{U}_1-0)^2 + (\widehat{U}_2-0)^2}{2-1} = \widehat{U}_1^2 + \widehat{U}_2^2
+$$
+
+#### Folding Frequency
+
+Our random process is a function on $\omega$.
+
+* $omega = 1$, the series makes one cycle per unit time
+* $omega = 1/2$, the series makes two cycles per unit time
+* $omega = 1/4$, the series makes four cycles per unit time
+
+We need at two points to determine a cycle, so the highest frequency of interest is 1/2 cycles per point.
+
+This frequency is called the folding frequency and defines the highest frequency that can be seen in discrete sampling.
+
+#### Aliases (sampling is not frequent enough)
+
+Higher frequencies sampled this way will appear at lower frequencies, called aliases;
+
+an example is the way a camera samples a rotating wheel on a moving automobile in a movie, in which the wheel appears to be rotating at a different rate, and sometimes backwards (the wagon wheel effect). 
+
+For example, most movies are recorded at 24 frames per second (or 24 Hertz). If the camera is filming a wheel that is rotating at 24 Hertz, the wheel will appear to stand still.
+
+$$
+x_t = \sum_{k = 1}^{q}U_{k1}cos(2\pi w_k t) + U_{k2} sin(2\pi \omega_k t) \\
+U_{k1},U_{k2} \text{ are uncorrelated} \\
+E(U_{ki}) = 0 \\
+V(U_{ki}) = \sigma_k^2
+$$
+
+Notice that frequency and variance of $U_{ki}$ can be different for each $k$.
+
+If we mimic the previous covariance calculation, we see that
+
+$$
+\gamma_x(h) = \sum_{k = 1}^{q} \sigma_k^2 cos(2\pi \omega_k h)
+$$
+
+Using $-1 \leq cos \theta \leq 1$ we see that
+
+$$
+-\sum_{k = 1}^{q} \sigma_k^2 \leq \gamma_x(h) \leq \sum_{k = 1}^{q} \sigma_k^2 
+$$
+
+We can follow the previous line of reasoning to get a variance estimate. Dr. Smith thinks you should divide by two for small $q$; for larger $q$ the trigonometric functions with cancel out.
+
+$$
+s_k^2 = \widehat{U}_{k1}^2 + \widehat{U}_{k2}^2 \\
+\widehat{V}(x_t) = \widehat{\gamma}_x(0) = \sum_{k = 1}^{q} \left(\widehat{U}_{k1}^2 + \widehat{U}_{k2}^2\right)
+$$
+
+#### Example 4.1 A Periodic Series
+
+Let's look at an example with $q = 6$.
+
+```{r}
+rm(
+  list = ls()
+)
+options(
+  digits = 2,
+  scipen = 999
+)
+```
+
+```{r}
+v <- 2*pi*(1:100)/100
+x_6 = 2*cos(x = 6*v)  + 3*sin(x = 6*v)
+x_10 = 4*cos(x = 10*v) + 5*sin(x = 10*v)
+x_40 = 6*cos(x = 40*v) + 7*sin(x = 40*v)
+x = x_6 + x_10 + x_40 
+
+#par(mfrow=c(2,2))
+astsa::tsplot(
+  x = x_6,
+  ylim = c(-10,10),
+  main = expression(
+    omega==6/100~~~A^2==13
+  )
+)
+astsa::tsplot(
+  x = x_10,
+  ylim = c(-10,10),
+  main = expression(
+    omega==10/100~~~A^2==41
+  )
+)
+astsa::tsplot(
+  x = x_40,
+  ylim = c(-10,10),
+  main = expression(
+    omega==40/100~~~A^2==85
+  )
+)
+astsa::tsplot(
+  x = x,
+  ylim = c(-16,16),
+  main = "sum"
+)
+```
+
+Let's check the approximation we proposed.
+
+```{r}
+var(
+  x = x_6
+)
+2^2 + 3^2
+```
+
+```{r}
+var(
+  x = x_10
+)
+4^2 + 5^2
+```
+
+```{r}
+var(
+  x = x_40
+)
+6^2 + 7^2 
+```
+
+```{r}
+var(
+  x = x
+)
+2^2 + 3^2 + 4^2 + 5^2 + 6^2 + 7^2 
+```
+
+#### Example 4.2 Estimation and the Periodogram
+
+When we have a time series sample $x_1,x_2,...,x_n$, and $n$ is odd we can write $x_t$ exactly.
+
+$$
+x_t = a_0 + \sum_{j = 1}^{(n-1)/2} a_j cos\left(2\pi\dfrac{tj}{n}\right) + b_j sin\left(2\pi\dfrac{tj}{n}\right) \\
+n \text{ is odd}
+$$
+
+When $n$ is even, the summation ends at $\dfrac{n}{2} - 1$, and we append the term
+
+$$
+a_{n/2} cos\left(2\pi \dfrac{t}{2}\right) = a_{n/2} (-1)^t
+$$
+
+This is exact:
+
+$$
+x_t = a_0 + \sum_{j = 1}^{(n-1)/2} a_j cos\left(2\pi\dfrac{tj}{n}\right) + b_j sin\left(2\pi\dfrac{tj}{n}\right) \\
+n \text{ is odd}
+$$
+
+We think of this as being an approximation to the exact formula. 
+
+$$
+x_t = \sum_{k = 1}^{q}U_{k1}cos(2\pi w_k t) + U_{k2} sin(2\pi \omega_k t) \\
+$$
+
+The exact formula can have a lot of coefficients close to zero.
+
+#### Regression coefficients for trigonometric functions
+
+-------------------------------------------------------------------------------
+
+Lemma:
+
+If $n \in \mathbb{Z}.\theta \in \{2\pi j/n|j \in \mathbb{Z},j/n \notin \mathbb{Z}\}$, then
+
+$$
+\sum_{k = 0}^{n-1} e^{i\theta k} = 0 \\
+\sum_{k = 0}^{n-1} cos (\theta k) = 0 \\
+\sum_{k = 0}^{n-1} sin (\theta k)  = 0
+$$
+Proof:
+
+$$\begin{align}
+\sum_{k = 0}^{n-1} e^{i\theta k} =& 1 + e^{i\theta} + e^{i2\theta} + ... +  e^{i(n-1)\theta} \\
+ =& \dfrac{1 - e^{i\theta}}{1 - e^{i\theta}}( 1 + e^{i\theta} + e^{i2\theta} + ... +  e^{i(n-1)\theta}) \\
+ =& \dfrac{1 - e^{in\theta}}{1 - e^{i\theta}} \\
+ =& \dfrac{0}{1 - e^{i\theta}}
+\end{align}$$
+
+-------------------------------------------------------------------------------
+
+$$\begin{align}
+z_{tj} =& cos\left(2\pi \dfrac{j}{n}t\right) \\
+\sum_{t = 1}^{n} z_{tj}^2 =& \sum_{t = 1}^{n}cos^2\left(2\pi j\dfrac{t}{n}\right) \\
+ =& \sum_{t = 1}^{n}\dfrac{1}{2} + \dfrac{1}{2} cos\left(4\pi j\dfrac{t}{n}\right) \\
+ =& \dfrac{n}{2} + \dfrac{1}{2} \sum_{t = 1}^{n}cos\left(4\pi j\dfrac{t}{n}\right) \\
+ =& \dfrac{n}{2}
+\end{align}$$
+
+$$\begin{align}
+z_{tj} =& sin\left(2\pi \dfrac{j}{n}t\right) \\
+\sum_{t = 1}^{n} z_{tj}^2 =& \sum_{t = 1}^{n}sin^2\left(2\pi j\dfrac{t}{n}\right) \\
+ =& \sum_{t = 1}^{n}\dfrac{1}{2} - \dfrac{1}{2} cos\left(4\pi j\dfrac{t}{n}\right) \\
+ =& \dfrac{n}{2} - \dfrac{1}{2} \sum_{t = 1}^{n}cos\left(4\pi j\dfrac{t}{n}\right) \\
+ =& \dfrac{n}{2}
+\end{align}$$
+
+$$
+a_0 = \bar{x} \\
+a_j = \dfrac{\sum_{t = 1}^{n} x_t cos\left(2\pi \dfrac{j}{n}t\right)}{\sum_{t = 1}^{n} cos^2\left(2\pi \dfrac{j}{n}t\right)} = \dfrac{2}{n} \sum_{t = 1}^{n} x_t cos\left(2\pi \dfrac{j}{n}t\right) \\
+b_j = \dfrac{\sum_{t = 1}^{n} x_t sin\left(2\pi \dfrac{j}{n}t\right)}{\sum_{t = 1}^{n} sin^2\left(2\pi \dfrac{j}{n}t\right)} = \dfrac{2}{n} \sum_{t = 1}^{n} x_t sin\left(2\pi \dfrac{j}{n}t\right) \\
+$$
+#### scaled periodogram 
+
+We use the scaled periodogram values to indicate magnitude of frequencies.
+
+$$
+P(j/n) = a_j^2 + b_j^2
+$$
+
+####  Fourier or fundamental frequencies, $\omega_j = j/n$
+
+The scaled periodogram is the sample variance at each frequency component and estiamtes $\sigma_j^2$ corresponding to the sinusoid oscillating at a frequency of $\omega_j = j/n$.
+
+
+* Large values of scaled periodogram indicate which frequencies are predominant in the series
+* Small values of scaled periodogram may be associated with noise. 
+
+
+Fortunately, it is not necessary to run a large regression to obtain the values of $a_j$ and $b_j$ because they can be computed quickly if $n$ is a highly composite integer. 
+
+#### discrete Fourier transform (DFT)
+
+The discrete Fourier transform (DFT) is a complex-valued weighted average of the data given by
+
+$$\begin{align}
+d(j/n) &= \dfrac{1}{\sqrt{n}} \sum_{t = 1}^{n} x_t exp(-2\pi \dfrac{j}{n} t i) \\
+&= \dfrac{1}{\sqrt{n}} \sum_{t = 1}^{n} x_t \left(cos\left(2\pi \dfrac{j}{n} t\right) - i sin\left(2\pi \dfrac{j}{n} t\right)\right) \\
+j &= 0,1,2,...,n-1
+\end{align}$$
+
+We can compute this using the fast Fourier transform. (Note: different packages and software compute the fast Fourier transform differently; consult the help documentation.)
+
+#### the periodogram
+
+$$
+\left|d(j/n)\right|^2 = \dfrac{1}{n} \left(\sum_{t = 1}^{n} x_t cos\left(2\pi \dfrac{j}{n} t\right)\right)^2 + \dfrac{1}{n} \left(\sum_{t = 1}^{n} x_t sin\left(2\pi \dfrac{j}{n} t\right)\right)^2 \\
+
+P(j/n) = \dfrac{4}{n}\left|d(j/n)\right|^2
+$$
+
+Note:
+
+$$
+P(j/n) = P(1 - j/n), j = 0,1,2,...,n-1
+$$
+
+Notice that the variance estimates above match the heights on the periodogram.
+
+Simulate a periodogram, notice that it picked up the components, and reflected the frequencies to $1-j/n$
+
+#### spectral analysis
+
+If we consider the data as a color (waveform) made up of primary colors at various strengths (amplitudes), then we might consider the periodogram as a prism that decomposes the color into its primary colors (spectrum). Hence the term spectral analysis.
+
+```{r}
+#dev.new()
+v_periodogram = abs(
+  x = 2*fft(
+    z = x
+  )/100
+)^2
+v_frequency = 0:99/100                    
+astsa::tsplot(
+  x = v_frequency,
+  y = v_periodogram,
+  type = "o",
+  xlab = "frequency",
+  ylab = "periodogram"
+)
+abline(v=.5, lty=2)
+```
+
+Another example
+
+Notice that the periodogram detects the two components close to 0.2
+
+```{r}
+# modulation
+t <- 1:200
+x <- 2*cos(x = 2*pi*0.2*t) * cos(x = 2*pi*0.01*t) # cos(2*pi*t/10) + cos(2*pi*t*3/10)
+astsa::tsplot(
+  x = x
+)     
+lines(
+  x = cos(x = 2*pi*0.19*t) + cos(x = 2*pi*0.21*t),
+  col = 2
+)     # the same
+Px = Mod(
+  z = fft(
+    z = x
+  )
+)^2 
+astsa::tsplot(
+  x = 0:199/200,
+  y = Px,
+  type = 'o'
+)                   # the periodogram
+```
+
+#### Example 4.3 Star Magnitude
+
+The star data in the astsa package are the magnitude of a star taken at midnight for 600 consecutive days. The data are taken from the classic text, The Calculus of Observations, a Treatise on Numerical Mathematics, by E.T. Whittaker and G. Robinson, (1923, Blackie & Son, Ltd.).
+
+The periodogram for frequencies less than 0.08 is also displayed in the figure;
+
+the periodogram ordinates for frequencies higher than 0.08 are essentially zero. 
+
+Note that the 29 (≈ 1/0.035) day cycle and the 24 (≈ 1/0.041) day cycle are the most prominent periodic components of the data.
+
+We can interpret this result as we are observing an amplitude modulated signal. For example, suppose we are observing signal-plus-noise, 
+
+$$
+x_t = s_t + v_t \\
+s_t = cos(2\pi \omega t) cos(2\pi\delta t) \\
+\delta \text{ is very small} 
+$$
+
+In this case, the process will oscillate at frequency $\omega$, but the amplitude will be modulated by $cos(2\pi\delta t)$. 
+
+Since
+
+$$
+2 cos(\alpha) cos(\beta) = cos(\alpha + \beta) + cos(\alpha - \beta) \\
+s_t = cos(2\pi \omega t) cos(2\pi\delta t) = \dfrac{cos(2\pi t(\omega + \delta)) + cos(2\pi t(\omega - \delta))}{2}
+$$
+the periodogram of data generated as will have two peaks close to each other at $\omega \pm \delta$. 
+
+```{r}
+# star mag analysis
+data(
+  list = "star",
+  package = "astsa"
+)
+length_star = length(
+  x = star
+)
+#par(mfrow=c(2,1))
+astsa::tsplot(
+  x = star,
+  ylab = "star magnitude",
+  xlab = "day"
+)
+ts_Periodogram = Mod(
+  z = fft(
+    z = star-mean(x = star)
+  )
+)^2/length_star
+v_Frequency  = (1:length_star -1)/length_star
+astsa::tsplot(
+  x = v_Frequency[1:50],
+  y = ts_Periodogram[1:50],
+  type = 'h',
+  lwd = 3,
+  ylab = "Periodogram",
+  xlab = "Frequency"
+)
+text(
+  x = 0.05,
+  y = 7000,
+  labels = "24 day cycle"
+) 
+text(
+  x = 0.027,
+  y = 9000,
+  labels = "29 day cycle"
+)
+#- a list to help find the peaks
+round(
+  x = cbind(
+    1/v_Frequency[1:30],
+    ts_Periodogram[1:30]
+  ),
+  digits = 3
+)
+```
