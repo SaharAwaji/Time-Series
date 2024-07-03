@@ -1,0 +1,429 @@
+---
+title: "1.1 The Nature of Time Series Data"
+author: "Aaron Smith"
+date: '2022-10-20'
+output: html_document
+---
+
+This code is modified from Time Series Analysis and Its Applications, by Robert H. Shumway, David S. Stoffer 
+https://github.com/nickpoison/tsa4
+
+UCF students can download it for free through the library.
+
+# Chapter 1
+
+The correlation between sampled points adjacent in time cannot be applied to statistical methods that assume that adjacent observations are independent and identically distributed.
+
+The first step in any time series investigation always involves careful examination of the recorded data plotted over time.
+
+Two approaches to time series: 
+
+* time domain approach: the investigation of lagged relationships as most important
+* frequency domain approach: the investigation of cycles as most important
+
+```{r,eval = FALSE}
+#install.packages(
+#  pkgs = "remotes"
+#)
+#remotes::install_github(
+#  repo = "nickpoison/astsa/astsa_build"
+#)
+```
+
+```{r}
+options(
+  digits = 3,
+  scipen = 99
+)
+rm(
+  list = ls()
+)
+```
+
+# 1.1 The Nature of Time Series Data
+
+Example 1.1 
+
+Johnson and Johnson Quarterly Earnings Per Share
+
+Johnson and Johnson quarterly earnings per share, 84 quarters (21 years) measured from the first quarter of 1960 to the last quarter of 1980.
+
+Note the gradually increasing underlying trend and the rather regular variation superimposed on the trend that seems to repeat over quarters.
+
+```{r}
+data(
+  list = "jj",
+  package = "astsa"
+)
+astsa::tsplot(
+  x = jj,
+  col = 4,
+  type="o",
+  ylab = "Quarterly Earnings per Share"
+)
+```
+
+Example 1.2  
+
+Global mean land-ocean temperature deviations to 2015
+
+Global mean land-ocean temperature deviations (from 1951-1980 average), measured in degrees centigrade, for the years 1880-2015. This was an update of gtemp, but gtemp_land and gtemp_ocean are the most recent updates.
+
+Source: https://data.giss.nasa.gov/gistemp/graphs/
+
+![GIS_TEMP_SEASONAL_Cycle_since_1880](GIS_TEMP_SEASONAL_Cycle_since_1880.png)
+
+Note an apparent upward trend in the series during the latter part of the twentieth century that has been used as an argument for the global warming hypothesis. Note also the leveling off at about 1935 and then another rather sharp upward trend at about 1970. 
+
+(possible random walk with drift?)
+
+```{r}
+data(
+  list = "globtemp",
+  package = "astsa"
+)
+astsa::tsplot(
+  x = globtemp,
+  col = 4,
+  type = "o",
+  ylab = "Global Temperature Deviations"
+)
+data(
+  list = "gtemp_land",
+  package = "astsa"
+)
+# or with the updated values
+astsa::tsplot(
+  x = gtemp_land,
+  col = 4,
+  type = "o",
+  ylab = "Global Temperature Deviations"
+)
+``` 
+
+Example 1.3  
+
+Speech Recording
+
+A small 0.1 second (1000 points) sample of recorded speech for the phrase "aaa...hhh".
+
+Note the repetitive nature of the signal and the regular periodicities. 
+
+One current problem of interest is computer recognition of speech, which would require converting this particular signal into the recorded phrase aaa · · · hhh. Spectral analysis can be used to produce a signature of this phrase that can be compared with signatures of various library syllables to look for a match. 
+
+One can immediately notice the regular repetition of small wavelets. The separation between the packets is known as the pitch period and represents the response of the vocal tract filter to a periodic sequence of pulses stimulated by the opening and closing of the glottis. 
+
+(possible autoregression?)
+
+```{r}
+data(
+  list = "speech",
+  package = "astsa"
+)
+astsa::tsplot(
+  x = speech
+)  
+``` 
+
+Example 1.4  
+
+Dow Jones Industrial Average
+
+The daily returns (or percent change) of the Dow Jones Industrial Average (DJIA).
+
+It is easy to spot the financial crisis of 2008 in the figure. The data shown are typical of return data. 
+
+* The mean of the series appears to be stable with an average return of approximately zero
+* However, highly volatile (variable) periods tend to be clustered together. 
+
+A problem in the analysis of financial data is to forecast the volatility of future returns. Models such as ARCH and GARCH models and stochastic volatility models have been developed to handle these problems.
+
+$$
+\begin{aligned}
+x_t & \text{ actual DJIA value} \\
+r_t &= \dfrac{x_t - x_{t-1}}{x_{t-1}} \\
+1 + r_t &= \dfrac{x_t}{x_{t-1}} \\
+log(1 + r_t) &= log(\dfrac{x_t}{x_{t-1}}) = log(x_t) - log(x_{t-1}) \approx r_t
+\end{aligned}
+$$
+
+Why is this approximation reasonable?
+
+$$
+log(1 + p) = p - \dfrac{p^2}{2} + \dfrac{p^3}{3} - \ldots \text{for } -1 < p \leq 1 \\
+\text{When } p \text{ is close to zero, the higher order terms are negligible.}
+$$
+
+
+```{r}
+#library(TTR)
+#library(xts)         # install it if you don't have it
+#data(
+#  list = "djia",
+#  package = "astsa"
+#)
+quantmod::getSymbols(
+  Symbols = "^DJI"
+)
+head(
+  x = DJI
+)
+tail(
+  x = DJI
+)
+djiar = diff(log(DJI$DJI.Close))[-1]        
+plot(
+  x = djiar,
+  col = 4,
+  main = "DJIA Returns"
+) 
+```
+
+Example 1.5  
+
+Southern Oscillation Index
+
+Southern Oscillation Index (SOI) for a period of 453 months ranging over the years 1950-1987.
+
+Data furnished by Dr. Roy Mendelssohn of the Pacific Fisheries Environmental Laboratory, NOAA (personal communication)
+
+The SOI measures changes in air pressure, related to sea surface temperatures in the central Pacific Ocean. The central Pacific warms every three to seven years due to the El Niño effect, which has been blamed for various global extreme weather events. Both series exhibit repetitive behavior, with regularly repeating cycles that are easily visible. This periodic behavior is of interest because under-lying processes of interest may be regular and the rate or frequency of oscillation characterizing the behavior of the underlying series would help to identify them.
+
+The series show two basic oscillations types, 
+
+* an obvious annual cycle (hot in the summer, cold in the winter), and 
+* a slower frequency that seems to repeat about every 4 years. 
+
+The two series are also related; it is easy to imagine the fish population is dependent on the ocean temperature. This possibility suggests trying some version of regression analysis as a procedure for relating the two series. Transfer function modeling
+
+(possibly a moving average of white noise?)
+
+```{r}
+#par(mfrow = c(2,1))  # set up the graphics
+data(
+  list = "soi",
+  package = "astsa"
+)
+astsa::tsplot(
+  x = soi,
+  col = 4,
+  ylab = "",
+  main = "Southern Oscillation Index"
+)
+```
+
+```{r}
+data(
+  list = "rec",
+  package = "astsa"
+)
+astsa::tsplot(
+  x = rec,
+  col = 4,
+  ylab = "",
+  main = "Recruitment"
+) 
+```
+
+Example 1.6
+
+fMRI Data
+
+Data (as a vector list) from an fMRI experiment in pain, listed by location and stimulus. The data are BOLD signals when a stimulus was applied for 32 seconds and then stopped for 32 seconds. The signal period is 64 seconds and the sampling rate was one observation every 2 seconds for 256 seconds (n = 128). The number of subjects under each condition varies.
+
+The LOCATIONS of the brain where the signal was measured were 
+
+* [1] Cortex 1: Primary Somatosensory, Contralateral, 
+* [2] Cortex 2: Primary Somatosensory, Ipsilateral, 
+* [3] Cortex 3: Secondary Somatosensory, Contralateral, 
+* [4] Cortex 4: Secondary Somatosensory, Ipsilateral, 
+* [5] Caudate, 
+* [6] Thalamus 1: Contralateral, 
+* [7] Thalamus 2: Ipsilateral, 
+* [8] Cerebellum 1: Contralateral and 
+* [9] Cerebellum 2: Ipsilateral.
+
+The TREATMENTS or stimuli (and number of subjects in each condition) are 
+
+* [1] Awake-Brush (5 subjects), 
+* [2] Awake-Heat (4 subjects), 
+* [3] Awake-Shock (5 subjects), 
+* [4] Low-Brush (3 subjects), 
+* [5] Low-Heat (5 subjects), and 
+* [6] Low-Shock (4 subjects). 
+
+Issue the command summary(fmri) for further details. In particular, awake (Awake) or mildly anesthetized (Low) subjects were subjected levels of periodic brushing (Brush), application of heat (Heat), and mild shock (Shock) effects.
+
+We averaged the results over subjects (these were evoked responses, and all subjects were in phase). The series shown are consecutive measures of blood oxygenation-level dependent (bold) signal intensity, which measures areas of activation in the brain. 
+Notice that the periodicities appear strongly in the motor cortex series and less strongly in the thalamus and cerebellum. 
+
+The fact that one has series from different areas of the brain suggests testing whether the areas are responding differently to the brush stimulus. 
+
+(possibly a moving averages of white noise?)
+
+```{r}
+data(
+  list = "fmri1",
+  package = "astsa"
+)
+#par(mfrow=c(2,1))  
+astsa::tsplot(
+  x = fmri1[,c(
+    "cort1","cort2","cort3","cort4"
+  )],
+  col = 1:4,
+  ylab = "BOLD",
+  main = "Cortex",
+  spaghetti = TRUE
+)
+astsa::tsplot(
+  x = fmri1[,c(
+    "thal1","thal2","cere1","cere2"
+  )],
+  col = 5:8,
+  ylab = "BOLD",
+  main = "Thalamus & Cerebellum",
+  spaghetti = TRUE
+)
+```
+
+```{r}
+# each separately (not in text)
+astsa::tsplot(
+  x = fmri1[,c(
+    "cort1","cort2","cort3","cort4",
+    "thal1","thal2",
+    "cere1","cere2"
+  )],
+  col = 1:8,
+  lwd = 2,
+  ncol = 2,
+  ylim = c(
+    -0.6,0.6
+  )
+)
+```
+
+```{r}
+# and another view (not in text)
+x = ts(
+  data = fmri1[,c(
+    "cort1","cort2","cort3","cort4",
+    "thal1","thal2",
+    "cere1","cere2"
+  )],
+  start = 0,
+  freq = 32
+)         
+names = c(
+  "Cortex","Thalamus","Cerebellum"
+)
+u = ts(
+  data = rep(
+    x = c(rep(0.6,16),rep(-.6,16)),
+    times = 4
+  ),
+  start = 0,
+  freq = 32
+) # stimulus signal
+#par(mfrow=c(3,1))
+for (i in 1:3){ 
+  j = 2*i - 1
+  astsa::tsplot(
+    x = x[,j:(j+1)],
+    ylab = "BOLD",
+    xlab = "",
+    main = names[i],
+    col = 5:6,
+    ylim = c(
+      -0.6,0.6
+    ), 
+    lwd = 2,
+    xaxt = "n",
+    spaghetti = TRUE
+  )
+  axis(
+    seq(
+      from = 0,
+      to = 256,
+      by = 64
+    ),
+    side = 1,
+    at = 0:4
+  )
+  lines(
+    x = u,
+    type = "s",
+    col = gray(
+      level = 0.3
+    )
+  ) 
+}
+mtext(
+  text = "seconds",
+  side = 1,
+  line = 1.75,
+  cex = 0.9
+)
+```
+
+Example 1.7
+
+The series represent two phases or arrivals along the surface, denoted by P (t = 1, . . ., 1024) and S (t = 1025, . . ., 2048), at a seismic recording station. The recording instruments in Scandinavia are observing earthquakes and mining explosions with one of each shown.
+
+The general problem of interest is in distinguishing or discriminating between waveforms generated by earthquakes and those generated by explosions. Features that may be important are the rough amplitude ratios of the first phase P to the second phase S, which tend to be smaller for earthquakes than for explosions. 
+
+In the case of the two events, the ratio of maximum amplitudes appears to be 
+
+* less than 0.5 for the earthquake and 
+* about 1 for the explosion. 
+
+Otherwise, note a subtle difference exists in the periodic nature of the S phase for the earthquake.
+
+We can use spectral analysis of variance for testing the equality of the periodic components of earthquakes and explosions. 
+
+Discriminant analysis would be able to classify future P and S components from events of unknown origin.
+
+Seismic Trace of Earthquake number 5
+
+Seismic trace of an earthquake [two phases or arrivals along the surface, the primary wave (t = 1,…,1024) and the shear wave (t = 1025,…,2048)] recorded at a seismic station.
+
+```{r}
+#par(mfrow=2:1)
+data(
+  list = "EQ5",
+  package = "astsa"
+)
+astsa::tsplot(
+  x = EQ5,
+  col = 4,
+  main = "Earthquake"
+)
+```
+
+Seismic Trace of Explosion number 6
+
+Seismic trace of an explosion [two phases or arrivals along the surface, the primary wave (t = 1,…,1024) and the shear wave (t = 1025,…,2048)] recorded at a seismic station.
+
+```{r}
+data(
+  list = "EXP6",
+  package = "astsa"
+)
+astsa::tsplot(
+  x = EXP6,
+  col = 4,
+  main = "Explosion"
+)
+```
+
+```{r}
+# or try (not in text)
+astsa::tsplot(
+  x = cbind(
+    EQ5,EXP6
+  ),
+  col = 4
+)
+```
+ 

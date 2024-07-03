@@ -1,0 +1,569 @@
+---
+title: "1 Characteristics of Time Series 1.4 Stationary Time Series"
+author: "Aaron Smith"
+date: '2022-11-12'
+output: html_document
+---
+
+This code is modified from Time Series Analysis and Its Applications, by Robert H. Shumway, David S. Stoffer 
+https://github.com/nickpoison/tsa4
+
+The most recent version of the package can be found at
+https://github.com/nickpoison/astsa/
+
+You can find demonstrations of astsa capabilities at
+https://github.com/nickpoison/astsa/blob/master/fun_with_astsa/fun_with_astsa.md
+
+In addition, the News and ChangeLog files are at
+https://github.com/nickpoison/astsa/blob/master/NEWS.md.
+
+The webpages for the texts and some help on using R for time series analysis can be found at 
+https://nickpoison.github.io/.
+
+UCF students can download it for free through the library.
+
+```{r,eval = FALSE}
+#install.packages(
+#  pkgs = "remotes"
+#)
+#remotes::install_github(
+#  repo = "nickpoison/astsa/astsa_build"
+#)
+```
+
+```{r}
+options(
+  digits = 3,
+  scipen = 99
+)
+rm(
+  list = ls()
+)
+```
+
+Stationary time series are series with regularity in the behavior. 
+
+# Definition 1.6 strictly stationary time series
+A strictly stationary time series is one for which the probabilistic behavior of every collection of values is identical to that of the time shifted set.
+
+$$
+P(x_{t_1} \leq c_1,x_{t_2} \leq c_2,\ldots,x_{t_k} \leq c_k) = P(x_{t_1 + h} \leq c_1,x_{t_2 + h} \leq c_2,\ldots,x_{t_k + h} \leq c_k) \ \forall k = 1,2,\ldots, k \ \forall \text{ time points } t_j, \ \forall c_j \in \mathbb{R} \ \forall \text{ time shifts } h \in \mathbb{Z}
+$$
+
+If a time series is strictly stationary, then all of the multivariate distribution functions for subsets of variables must agree with their counterparts in the shifted set for all values of the shift parameter h.
+
+# Example: 
+
+## k = 1
+
+$$
+P(x_s \leq c) = P(x_t \leq c) \ \forall s,t
+$$
+
+The probability function is constant with respect to time. Furthermore if the expected value exists, it is constant with respect to time and $\mu_s = \mu_t$.
+
+Note a random walk is not strictly stationary because the mean changes with time.
+
+## k = 2
+
+$$
+P(x_s \leq c_1,x_t \leq c_2) = P(x_{s + h} \leq c_1,x_{t + h} \leq c_2) \ \forall \text{ time points } s,t \text{ and time shift } h
+$$
+
+the autocovariance satisfies
+
+$$
+\gamma(s,t) = \gamma(s+h,t+h) \ \forall \text{ time points } s,t \text{ and time shift } h
+$$
+The autocovariance function depends only on the time difference between $s$ and $t$, and not on the actual times.
+
+# Definition 1.7 weakly stationary time series
+
+A weakly stationary time series, $x_t$, is a finite variance process such that
+
+* the mean value function, $μ_t$, is constant and does not depend on time $t$, and
+* the autocovariance function, $\gamma(s,t)$, depends on $s$ and $t$ only on the difference $|s − t|$.
+
+When we use the term stationary, we mean weakly stationary.
+
+Stationarity requires regularity in the mean and autocorrelation functions so that these quantities may be estimated by averaging. 
+
+A strictly stationary time series with finite variance is also weakly stationary. The converse is not correct unless other conditions hold.
+
+# Proposition:
+
+If a time series is Gaussian and weakly stationary, then it is also strictly stationary.
+
+# Proposition:
+
+When a time series is weakly stationary, then
+
+$$\begin{aligned}
+E(x_t) = \mu_t = \mu &\text{ (constant expected value)} \\
+\gamma(t+h,t) = cov(x_{t+h},x_t) = cov(x_{h},x_0) = \gamma(h,0) &\text{ (autocovariance depends on shift, not time)}
+\end{aligned}$$
+
+# Definition 1.8 
+
+The autocovariance function of a stationary time series will be written as
+
+$$
+\gamma(h) = cov(x_{t+h},x_t) = E[(x_{t+h} - \mu)(x_t - \mu)]
+$$
+
+# Definition 
+
+The autocorrelation function (ACF) of a stationary time series will be written as
+
+$$
+\rho(h) = \dfrac{\gamma(t+h,t)}{\sqrt{\gamma(t+h,t+h)\gamma(t,t)}} = \dfrac{\gamma(h)}{\gamma(0)}
+$$
+
+The Cauchy-Schwarz inequality shows that $-1 \leq \rho(h) \leq 1 \ \forall h$
+
+# Example 1.19 Stationarity of White Noise
+
+The mean and autocovariance functions of the white noise series are easily evaluated as $μ_{wt} = 0$ and
+
+$$
+\gamma_w(h) = cov(w_{t+h},w_t) = \begin{cases}
+0 & \text{ if } h \neq 0\\
+\sigma_w^2 & \text{ if } h = 0
+\end{cases} \\
+\rho_w(h) = \begin{cases}
+0 & \text{ if } h \neq 0\\
+1 & \text{ if } h = 0
+\end{cases}
+$$
+
+White noise satisfies the conditions of weakly stationary. If the white noise variates are also normally distributed or Gaussian,
+the series is also strictly stationary, as can be seen by the fact that the noise would also be iid.
+
+```{r}
+set.seed(
+  seed = 823
+)
+v_rnorm <- rnorm(
+  n = 10000
+)
+astsa::acf1(
+  series = v_rnorm
+)
+astsa::acf2(
+  series = v_rnorm
+)
+```
+
+# Example 1.20 Stationarity of a Moving Average
+
+The three-point moving average process from Gaussian white noise is stationary.
+
+$$
+w_t ∼ iid N(0, \sigma_w^2) \\
+v_t = \dfrac{w_{t-1} + w_t + w_{t-1}}{3} \\
+\mu_{vt} = 0
+$$
+
+$$
+\begin{aligned}
+\gamma_v(h) =& \begin{cases} \\
+      \dfrac{1}{9}\sigma_w^2 & when \ h = -2 \\
+      \dfrac{2}{9}\sigma_w^2 & when \ h = -1 \\
+      \dfrac{3}{9}\sigma_w^2 & when \ h = 0 \\      
+      \dfrac{2}{9}\sigma_w^2 & when \ h = 1 \\
+      \dfrac{1}{9}\sigma_w^2 & when \ h = 2 \\
+      0 & when \ |h| > 2 \\
+   \end{cases} \\
+\rho_v(h) =& \begin{cases} \\
+      \dfrac{1}{9} & when \ h = -2 \\
+      \dfrac{2}{9} & when \ h = -1 \\
+      \dfrac{3}{9} & when \ h = 0 \\      
+      \dfrac{2}{9} & when \ h = 1 \\
+      \dfrac{1}{9} & when \ h = 2 \\
+      0 & when \ |h| > 2 \\
+   \end{cases}
+\end{aligned}
+$$
+
+```{r}
+v_rnorm = rnorm(
+  n = 10000,
+  mean = 0,
+  sd = 1
+)
+filter_rnorm = filter(
+  x = v_rnorm,
+  sides = 2,
+  filter = rep(
+    x = 1/3,
+    times = 3
+  )
+)
+astsa::acf1(
+  series = filter_rnorm
+)
+astsa::acf2(
+  series = filter_rnorm
+)
+```
+
+# Example 1.21 A Random Walk is Not Stationary
+
+A random walk is not stationary because its autocovariance function depends on time.
+
+$$
+\gamma(s,t) = min(s,t)\sigma_w^2
+$$
+
+A random walk with drift is not stationary because the mean is a function on $t$
+
+$$
+\mu_{xt} = \delta t
+$$
+
+```{r}
+set.seed(
+  seed = 823
+)
+v_rnorm = rnorm(
+  n = 100000
+)
+cumsum_rnorm = cumsum(
+  x = v_rnorm
+) # two commands in one line
+wd = v_rnorm + 0.2;
+v_randomwalkdrift = cumsum(
+  x = wd
+)
+astsa::acf1(
+  series = cumsum_rnorm
+)
+astsa::acf1(
+  series = v_randomwalkdrift
+)
+```
+
+# Example 1.22 Trend Stationarity
+
+For example, if 
+
+$$
+x_t = \alpha + \beta t + y_t \\
+y_t \text{ is stationary}
+$$ 
+then the mean function is 
+
+$$
+\mu_{x,t} = E(x_t) = \alpha + \beta t + \mu_y
+$$
+which is not independent of time, the process is not stationary. 
+
+The autocovariance function, however, is independent of time, because 
+
+$$\begin{aligned}
+\gamma_x(h) =& cov(x_{t+h},x_t) \\
+=& E[(\alpha + \beta (t+h) + y_{t+h} - \alpha - \beta (t+h) - \mu_{t+h})(\alpha + \beta t + y_t - \alpha - \beta t - \mu_t)] \\
+=& E[(y_{t+h} - \mu_{t+h})(y_t - \mu_t)] \\
+=& \gamma_y(h)
+\end{aligned}$$
+
+The model has trend stationarity.
+
+# Example of trend stationarity
+
+An example of such a process is the price of chicken series.
+
+```{r}
+data(
+  list = "chicken",
+  package = "astsa"
+)
+astsa::trend(
+  series = chicken,
+  lwd = 2
+)
+lm_chicken <- lm(
+  formula = chicken~time(chicken)
+)
+summary(
+  object = lm_chicken
+)
+astsa::tsplot(
+  x = chicken,
+  ylab = "cents per pound",
+  col = 4,
+  lwd = 2
+)
+abline(
+  reg = lm_chicken
+)
+```
+
+# Properties of autocovariance
+
+The autocovariance function of a stationary process has several special properties.
+
+* non-negative definite
+* bounded by the variance
+* symmetric about the origin
+
+## autocovariance is non-negative definite
+
+$\gamma(h)$ is non-negative definite ensuring that variances of linear combinations of the variates $x_t$ will never be negative. 
+
+$$
+0 \leq var(a_1x_1 + \ldots + a_nx_n) = \sum_{j = 1}^{n}\sum_{k = 1}^{n}a_ja_k\gamma(j-k) \ \forall n \in \mathbb{Z}
+$$
+
+## autocovariance is bounded by the variance
+
+$$
+\gamma(0) = E[(x_t - \mu_x)^2] \\
+|\gamma(h)| \leq \gamma(0) \text{ (use Cauchy-Schwarz)}
+$$
+
+## autocovariance is symmetric about the origin
+
+$$
+\gamma((t+h)-t) = cov(x_{t+h},x_{t}) = cov(x_{t},x_{t+h}) = \gamma(t - (t+h)) \\
+\gamma(h) = \gamma(-h)
+$$
+# Definition 1.10 jointly stationary
+
+Two time series, say, $x_t$ and $y_t$, are said to be jointly stationary if they are each stationary, and the cross-covariance function is a function only on the lag $h$.
+
+$$
+cov(x_{t+h},y_t) = E[(x_{t+h} - \mu_x)(y_t - \mu_y)]
+$$
+
+When jointly stationary applies, we denote the covariance as $\gamma_{xy}(h)$.
+
+# Definition 1.11 
+The cross-correlation function (CCF) of jointly stationary time series $x_t$ and $y_t$ is defined as
+
+$$
+\rho_{xy}(h) = \dfrac{\gamma_{xy}(h)}{\sqrt{\gamma_x(0)\gamma_y(0)}} \text{ and} \\
+-1 \leq \rho_{xy}(h) \leq 1
+$$
+
+In general, $cov(x_2,y_1) \neq cov(x_1,y_2)$ and $\rho_{xy}(h) \neq \rho_{xy}(-h)$, but when we switch the subscript order
+
+$$
+\rho_{xy}(h) = \rho_{yx}(-h)
+$$
+
+# Example 1.23 Joint Stationarity
+
+Consider the two series, $x_t$ and $y_t$, formed from the sum and difference of two successive values of a white noise process, 
+
+$$
+x_t = w_t + w_{t-1} \\
+y_t = w_t - w_{t-1} \\
+w_t \text{ are independent} \\
+E(w_t) = 0 \\
+var(w_t) = \sigma_w^2
+$$
+
+then the following holds:
+
+$$\begin{aligned}
+\gamma_x(0) =& \gamma_y(0) = 2\sigma_w^2 \\
+\gamma_x(1) =& \gamma_x(-1) = \sigma_x^2 \\
+\gamma_y(1) =& \gamma_y(-1) = -\sigma_x^2 \\ 
+\gamma_{xy}(1) =& cov(x_{t+1},y_t) = cov(w_{t+1} + w_t,w_t = w_{t-1}) = \sigma_w^2 \text{ (only one term in the expansion is non-zero)} \\
+\rho_v(h) =& \begin{cases} \\
+      -1/2 & when \ h = -1 \\
+      0 & when \ h = 0 \\
+      1/2 & when \ h = 1 \\
+      0 & when \ |h| > 1
+   \end{cases}
+\end{aligned}$$
+
+```{r}
+set.seed(
+  seed = 823
+)
+n <- 10000
+v_rnorm <- rnorm(
+  n = n
+)
+x <- v_rnorm[-n] + v_rnorm[-1]
+y <- v_rnorm[-n] - v_rnorm[-1]
+var(
+  x = data.frame(
+    x = x,
+    y = y
+  )
+)
+# the acf1() plots show correlation, the variance of 2 give correlation = 1/2
+astsa::acf1(
+  series = x
+)
+astsa::acf1(
+  series = y
+)
+astsa::ccf2(
+  x = x,
+  y = y,
+  type = "covariance"
+)
+```
+
+# Example 1.24 Prediction Using Cross-Correlation
+
+Consider the problem of determining possible leading or lagging relations between two series $x_t$ and $y_t$. If the model
+
+$$
+y_t = Ax_{t-l} + w_t
+$$
+
+holds, then 
+
+* $x_t$ leads $y_t$ for $l > 0$
+* $x_t$ lags $y_t$ for $l < 0$
+
+The analysis of leading and lagging relations might be important in predicting the value of $y_t$ from $x_t$.
+
+Assuming that the noise $w_t$ is uncorrelated with $x_t$, the cross-covariance function can be computed as
+
+$$\begin{aligned}
+\gamma_{yx}(h) =& cov(y_{t+h},x_t) \\
+=& cov(Ax_{t+h-l} + w_{t+h},x_t) \\
+=& cov(Ax_{t+h-l},x_t) \\
+=& A\gamma_x(h-l)
+\end{aligned}$$
+
+By (Cauchy–Schwarz) the largest absolute value of autocovariance/autocorrelation is with lag of zero ($h = l$). The cross-covariance function will look like the autocovariance of the input series $x_t$, and it will have 
+
+* a peak on the positive side if $x_t$ leads $y_t$ and 
+* a peak on the negative side if $x_t$ lags $y_t$.
+
+```{r}
+set.seed(
+  seed = 823
+)
+x = rnorm(
+  n = 100
+)
+# l = 5
+y = lag(x = x,k = -5) + rnorm(n = 100)
+astsa::ccf2(
+  x = y,
+  y = x,
+  ylab = 'Cross correlation',
+  type = "correlation"
+)
+text(
+  x = 9,
+  y = 1.1,
+  labels = 'x leads'
+)
+text(
+  x = -8,
+  y = 1.1,
+  labels = 'y leads'
+)
+astsa::ccf2(
+  x = y,
+  y = x,
+  ylab = 'Cross covariance',
+  type = 'covariance'
+)
+text(
+  x = 9,
+  y = 1.1,
+  labels = 'x leads'
+)
+text(
+  x = -8,
+  y = 1.1,
+  labels = 'y leads'
+)
+```
+
+Weak stationarity forms the basis for much of time series analysis. The fundamental properties of the mean and autocovariance
+functions are satisfied by many models that appear to generate plausible sample realizations.
+
+The three points moving average example is an example of weakly stationary linear process.
+
+# Definition 1.12 linear process
+A linear process, $x_t$, is defined to be a linear combination of white noise variates $w_t$, and is given by
+
+$$
+x_t = \mu + \sum_{j = -\infty}^{\infty}\psi_j w_{t-j} \\
+\sum_{j = -\infty}^{\infty}|\psi_j| < \infty \text{ (absolutely convergent)}
+$$
+
+## Autocovariance of linear process
+
+The absolute convergence requirement makes the autocovariance defined. In the multiplication only the terms with the same white noise value give non-zero covariance.
+
+$$
+\gamma_x(h) = \sigma_w^2 \sum_{j = -\infty}^{\infty} \psi_{j + h}\psi_j
+$$
+
+Recall that $\gamma_x(h) = \gamma_x(-h)$.
+
+If $\sum_{j = -\infty}^{\infty}\psi_j^2 < \infty$, then the variance of the linear process will be finite.
+
+In the moving average example $\psi_{-1} = \psi_0 = \psi_1 = \dfrac{1}{3}, \psi_j = 0 \ j \neq -1,0,1$.
+
+When a linear process is dependent on future values, it is useless for prediction. A causal linear process has coefficient zero for future values.
+
+An important case in which a weakly stationary series is also strictly stationary is the normal or Gaussian series.
+
+# Definition 1.13 Gaussian process
+
+A process, ${x_t}$, is said to be a Gaussian process if the n-dimensional vectors 
+
+$$
+x = (x_{t_1},x_{t_2},\ldots,x_{t_n})^T,
+$$
+for every collection of distinct time points $t_1,t_2,\ldots,t_n$, and every positive integer $n$, have a multivariate normal distribution.
+
+Defining the $n \times 1$ mean vector 
+$$
+E(x) = \mu = (\mu_{t_1},\mu_{t_2},\ldots,\mu_{t_n})^T
+$$ 
+
+and the $n \times n$ covariance matrix as 
+
+$$
+var(x) = \Gamma = \{\gamma(t_i,t_j)|i,j = 1,2,\ldots,n\},
+$$
+
+which is assumed to be positive definite
+
+$$
+f(x) = \dfrac{1}{(2\pi)^{-n/2}}\dfrac{1}{\sqrt{|\Gamma|}}exp\left(\dfrac{-1}{2}(x - \mu)^T\Gamma^{-1}(x - \mu)\right) \ \forall x \in \mathbb{R}^n
+$$
+
+Important aspects of linear and Gaussian processes:
+
+If a Gaussian time series, ${x_t}$, is weakly stationary, then 
+
+* $\mu_t$ is constant and 
+* $\gamma(t_i,t_j) = \gamma(|t_i - t_j|)$
+* $\mu$ and $\Gamma$ are independent of time
+* All the finite distributions of the series ${x_t}$ depend only on lag and not on the actual times, and hence the series must be
+strictly stationary.
+
+
+Wold Decomposition gives us that a stationary non-deterministic time series with $\sum_{j = 0}^{\infty}\psi_j^2 < \infty$ is a causal linear process.
+
+A linear process need not be Gaussian, but if a time series is Gaussian, then it is a causal linear process with $w_t \sim iid normal(0,\sigma_w^2)$. Hence stationary Gaussian processes form a basis for modeling many time series.
+
+It is not enough for the marginal distributions to be Gaussian for the process to be Gaussian.
+
+# Counter-example:
+
+Let $X$ and $Z$ be independent normal and let 
+
+$$
+Y = \begin{cases}
+ Z & if \ XZ > 0 \\
+−Z & if \ XZ ≤ 0
+\end{cases}
+$$
+
+$X$ and $Y$ are normal, but $(X,Y)$ is not bivariate normal.

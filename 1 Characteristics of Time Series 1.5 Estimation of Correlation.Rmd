@@ -1,0 +1,580 @@
+---
+title: "1 Characteristics of Time Series 1.5 Estimation of Correlation"
+author: "Aaron Smith"
+date: '2022-11-14'
+output: html_document
+---
+
+This code is modified from Time Series Analysis and Its Applications, by Robert H. Shumway, David S. Stoffer 
+https://github.com/nickpoison/tsa4
+
+The most recent version of the package can be found at
+https://github.com/nickpoison/astsa/
+
+You can find demonstrations of astsa capabilities at
+https://github.com/nickpoison/astsa/blob/master/fun_with_astsa/fun_with_astsa.md
+
+In addition, the News and ChangeLog files are at
+https://github.com/nickpoison/astsa/blob/master/NEWS.md.
+
+The webpages for the texts and some help on using R for time series analysis can be found at 
+https://nickpoison.github.io/.
+
+UCF students can download it for free through the library.
+
+```{r,eval = FALSE}
+#install.packages(
+#  pkgs = "remotes"
+#)
+#remotes::install_github(
+#  repo = "nickpoison/astsa/astsa_build"
+#)
+```
+
+```{r}
+options(
+  digits = 3,
+  scipen = 99
+)
+rm(
+  list = ls()
+)
+```
+
+The previous videos focused on theoretical autocorrelation and cross-correlation. Here we will shift from theory to analyzing sampled data.
+
+We use the sampled points to estimate mean, autocovariance, and autocorrelation.
+
+$$
+x_1,x_2,\ldots,x_n
+$$
+
+Typically we will not have iid observations of $x_t$ for estimating the values.
+
+The assumption of stationarity is critical when we have little data.
+
+We use averages to estimate the population means and covariance functions.
+
+When a time series is stationary we can estimate the constant mean $\mu_t = \mu$ using the sample mean.
+
+$$
+\bar{x} = \dfrac{1}{n}\sum_{t = 1}^{n}x_t \\
+E(\bar{x}) = \mu
+$$
+
+$$\begin{aligned}
+var(\bar{x}) =& var\left(\dfrac{1}{n}\sum_{t = 1}^{n}x_t\right) \\
+=& \dfrac{1}{n^2}cov\left(\sum_{s = 1}^{n}x_s,\sum_{t = 1}^{n}x_t\right) \\
+=& \dfrac{1}{n^2}\sum_{s = 1}^{n}\sum_{t = 1}^{n} cov(x_s,x_t) \\ 
+=& \dfrac{1}{n^2}\sum_{s = 1}^{n}\sum_{t = 1}^{n} \gamma_x(s-t) \\
+=& \dfrac{1}{n^2} \sum_{h = -n}^{n}(n - |h|)\gamma_x(h)
+\end{aligned}$$
+
+If $\gamma_x(h) = 0 \ if \ h \neq 0$ (such as with white noise), then
+
+$$
+var(\bar{x}) = \dfrac{1}{n} \gamma_x(0) = \sigma_x^2/n
+$$
+
+Note that $var(\bar{x})$ maybe larger or less than $\sigma_x^2/n$ when the covariance terms are non-zero.
+
+# Definition 1.14 sample autocovariance
+
+$$
+\widehat{\gamma}_x(h) = \dfrac{1}{n}\sum_{t = 1}^{n-h}(x_{t+h} - \bar{x})(x_t-\bar{x})
+$$
+
+* $\widehat{\gamma}_x(h)$ is symmetric about zero $\widehat{\gamma}_x(h) = \widehat{\gamma}_x(-h)$
+* $\widehat{\gamma}_x(h)$ is a biased estimator of $\gamma_x(h)$
+
+# Definition 1.15 sample autocorrelation function
+
+$$
+\widehat{\rho}_x(h) = \dfrac{\widehat{\gamma}_x(h)}{\widehat{\gamma}_x(0)}
+$$
+
+# Example 1.25 Sample ACF and Scatterplots
+
+Estimating autocorrelation is similar to estimating of correlation in the usual setup where we have pairs of observations.
+
+The pairs of observations for estimating $\rho(h)$ $n − h$ pairs given by 
+
+$$
+\{(x_t, x_{t+h}); t = 1, \ldots, n − h\}
+$$
+
+SOI Data set:
+
+Southern Oscillation Index
+
+Southern Oscillation Index (SOI) for a period of 453 months ranging over the years 1950-1987.
+
+The format is: Time-Series [1:453] from 1950 to 1988: 0.377 0.246 0.311 0.104 -0.016 0.235 0.137 0.191 -0.016 0.29 ...
+
+pairs with rec (Recruitment)
+
+Data furnished by Dr. Roy Mendelssohn of the Pacific Fisheries Environmental Laboratory, NOAA (personal communication).
+
+```{r}
+data(
+  list = "soi",
+  package = "astsa"
+)
+acf1_soi <- astsa::acf1(
+  series = soi,
+  max.lag = 6,
+  plot = TRUE
+)
+astsa::tsplot(
+  x = lag(
+    x = soi,
+    k = -1
+  ),
+  y = soi,
+  col = 4,
+  type = 'p',
+  xlab = 'lag(soi,-1)'
+)
+legend(
+  x = "topleft",
+  legend = acf1_soi[1],
+  bg = "white",
+  adj = 0.45,
+  cex = 0.85
+)
+astsa::tsplot(
+  x = lag(
+    x = soi,
+    k = -6
+  ),
+  y = soi,
+  col = 4,
+  type = 'p',
+  xlab = 'lag(soi,-6)'
+)
+legend(
+  x = "topleft",
+  legend = acf1_soi[6],
+  bg = "white",
+  adj = 0.25,
+  cex = 0.8
+)
+```
+
+# Property 1.2 Large-Sample Distribution of the ACF
+
+If $x_t$ is iid  white noise with a fourth moment (such as when $x_t$ is white Gaussian noise), $n$ is large, and $H$ is fixed, then the sample ACF, $\widehat{\rho}_x(h) \ h = 1,2,\dots,H$, is approximately normally
+distributed with zero mean and standard deviation given by 
+$$
+\sigma_{\widehat{\rho}_x(h)} = \dfrac{1}{\sqrt{n}}
+$$
+
+Using this approximate distribution we obtain a method of assessing whether peaks
+in $\widehat{\rho}_x(h)$ are significant by determining whether the peak is outside the interval 
+
+$$\pm\dfrac{2}{\sqrt{n}}.$$ 
+
+For a white noise sequence, approximately 95% of the sample ACFs will be in this interval.
+
+Many statistical modeling procedures depend on reducing a time series to a white noise series using various kinds of transformations.
+
+# Example 1.26 simulated sequence of coin tosses
+
+Let's compare the sample ACF to theoretical ACF, using random number generation to simulate data generated by tossing a fair coin, 
+$$
+x_t = \begin{cases} 
+1 \ if \ heads \\
+-1 \ if \ tails
+\end{cases} \\
+y_t = 5 + x_t − 0.7x_{t−1}
+$$
+
+Using the standard covariance formula, we see that $\rho_y(1) = \dfrac{-0.7}{1.49} \approx -0.47$.
+
+Since $x_t$ are independent, the covariance of $y_t$ is zero when the shift is greater than one (no non-zero addends in the summation).
+
+We generate two sets of data with different sample sizes. Notice that for the smaller sample the sample ACF is larger for the shifts that should be approximately zero.
+
+## smaller sample size
+
+```{r}
+set.seed(
+  seed = 823
+)
+x1 = sample(
+  x = c(-1,1),
+  size = 11,
+  replace = TRUE
+)
+y1 = 5 + filter(
+  x = x1,
+  sides = 1,
+  filter = c(1,-0.7)
+)[-1]
+mean(y1)
+astsa::tsplot(
+  x = y1,
+  type = 's'
+)   # plot 1st series
+points(
+  x = y1,
+  pch = 19
+)
+acf(
+  x = y1,
+  lag.max = 10,
+  plot = TRUE
+)
+```
+
+## larger sample size
+
+```{r}
+set.seed(
+  seed = 823
+)
+x2 = sample(
+  x = c(-1,1),
+  size = 500,
+  replace = TRUE
+)
+y2 = 5 + filter(
+  x = x2,
+  sides = 1,
+  filter = c(1,-0.7)
+)[-1]
+mean(
+  x = y2
+)
+astsa::tsplot(
+  x = y2,
+  type = 's'
+)   # plot 1st series
+points(
+  x = y2,
+  pch = 19
+)
+acf(
+  x = y2,
+  lag.max = 10,
+  plot = TRUE
+) 
+```
+
+simulated coin tosses
+
+here's the version from the other text - same idea but the y values are 2-4-6-8 like the children's cheer
+
+```{r}
+set.seed(
+  seed = 823
+)
+x1 = sample(
+  x = c(-2,2),
+  size = 11,
+  replace = TRUE
+)
+x2 = sample(
+  x = c(-2,2),
+  size = 101,
+  replace = TRUE
+)
+y1 = 5 + filter(
+  x = x1,
+  sides = 1,
+  filter = c(1,-.5)
+)[-1]
+y2 = 5 + filter(
+  x = x2,
+  sides = 1,
+  filter = c(1,-.5)
+)[-1]
+astsa::tsplot(
+  x = y1,
+  type = "s",
+  col = 4,
+  xaxt = "n",
+  yaxt = "n"
+)
+points(
+  x = y1,
+  pch = 21,
+  cex = 1.1,
+  bg = 6
+)
+axis(
+  side = 1,
+  at = 1:10
+)
+axis(
+  side = 2,
+  at = seq(
+    from = 2,
+    to = 8,
+    by = 2
+  ),
+  las = 1
+)
+astsa::tsplot(
+  x = y2,
+  type = "s",
+  col = 4,
+  xaxt = "n",
+  yaxt = "n"
+)
+points(
+  x = y2,
+  pch = 21,
+  cex = 1.1,
+  bg = 6
+)
+axis(
+  side = 1,
+  at = 1:10
+)
+axis(
+  side = 2,
+  at = seq(
+    from = 2,
+    to = 8,
+    by = 2
+  ),
+  las = 1
+)
+acf(
+  x = y1,
+  lag.max = 4,
+  plot = TRUE
+) 
+acf(
+  x = y2,
+  lag.max = 4,
+  plot = TRUE
+) 
+```
+
+# Example 1.27 ACF of a Speech Signal
+
+Computing the sample ACF as in the previous example can be thought of as matching the time series $h$ units in the future $x_{t+h}$ against $x_t$.
+
+The series appears to contain a sequence of repeating short signals. The ACF confirms this, showing repeating peaks spaced about 106–109 points. 
+
+The distance between the repeating signals is known as the pitch period and is a fundamental parameter of
+interest in systems that encode and decipher speech. 
+
+Because the series is sampled at 10,000 points per second, the pitch period appears to be between 0.0106 and 0.0109
+seconds. To compute the sample ACF in R, use acf(speech, 250).
+
+A small 0.1 second (1000 points) sample of recorded speech for the phrase "aaa...hhh".
+
+The format is: Time-Series [1:1020] from 1 to 1020: 1814 1556 1442 1416 1352 ...
+
+```{r}
+data(
+  list = "speech",
+  package = "astsa"
+)
+astsa::acf1(
+  series = speech,
+  max.lag = 250
+)
+```
+
+# Definition 1.16 cross-covariance and cross-correlation estimators
+
+The estimators for the cross-covariance function, 
+$$\gamma_{xy}(h) = E[(x_{t+h} - \mu_x)(y_t - \mu_{y})]$$, 
+
+and the cross-correlation function 
+
+$$\rho_{xy}(h) = \dfrac{\gamma_{xy}(h)}{\sqrt{\gamma_{x}(0)\gamma_{y}(0)}}$$ 
+
+are
+
+Notice that the use of the time-independent sample mean implies that the series are stationary.
+
+## sample cross-covariance function
+
+$$\begin{aligned}
+\widehat{\gamma}_{xy}(h) = \dfrac{1}{n}\sum_{t = 1}^{n-h}\left(x_{t+h} - \bar{x}\right)\left(t_t - \bar{y}\right)
+\end{aligned}$$
+
+## sample cross-correlation function
+
+$$\begin{aligned}
+\widehat{\rho}_{xy}(h) = \dfrac{\widehat{\gamma}_{xy}(h)}{\sqrt{\widehat{\gamma}_{x}(0)\widehat{\gamma}_{y}(0)}} \\
+-1 \leq \widehat{\rho}_{xy}(h) \leq 1
+\end{aligned}$$
+
+The sample cross-correlation function can be examined graphically as a function
+of lag h to search for leading or lagging relations. 
+
+Since $-1 \leq \widehat{\rho}_{xy}(h) \leq 1$, we can compare cross correlations with +1,-1.
+
+# Property 1.3 Large-Sample Distribution of Cross-Correlation
+
+If at least one of the series is independent white noise, then the large sample distribution of $\widehat{\rho}_{xy}(h)$ is normal with mean zero and
+
+$$
+\sigma_{\widehat{\rho}_{xy}} = \dfrac{1}{\sqrt{n}}
+$$
+
+#Example 1.28 SOI and Recruitment Correlation Analysis
+
+The autocorrelation and cross-correlation functions can be used to analyzing the joint behavior of two stationary series. 
+
+We considered simultaneous monthly readings of the SOI and the number of new fish (Recruitment) computed
+from a model. The figures shows the autocorrelationand cross-correlationfunctions for these two series.
+
+Both of the autocorrelation plots show periodicities corresponding to the correlation between values separated by 12 units. 
+
+Observations 12 months or one year apart are strongly positively correlated, as are observations at 24, 36, 48. 
+
+Observations separated by six months are negatively correlated, showing that positive excursions tend to be associated with negative excursions six months removed.
+
+The cross-correlation plot, however, shows some departure from the cyclic component of each series and there is an obvious peak at $h = −6$. 
+
+This result implies that SOI measured at time t − 6 months is associated with the Recruitment series at time $t$.
+
+We could say the SOI leads the Recruitment series by six months.
+
+The sign of the CCF is negative, leading to the conclusion that the two series move in different directions; that is, increases in SOI lead to decreases in Recruitment and vice versa. (There is a non-linear relationship we will discover later.)
+
+The dashed lines shown on the plots are at $\dfrac{\pm 2}{\sqrt{453}} \approx 0.094$ but since neither series is noise, these lines do not apply.
+
+```{r}
+data(
+  list = "rec",
+  package = "astsa"
+)
+astsa::acf1(
+  series = soi,
+  main = "Southern Oscillation Index"
+)
+astsa::acf1(
+  series = rec,
+  main = "Recruitment"
+)
+astsa::ccf2(
+  x = soi,
+  y = rec,
+  main = "SOI vs Recruitment"
+)
+```
+
+# Example 1.29 Prewhitening and Cross Correlation Analysis
+
+Let's discuss prewhitening of a series.
+
+To use the large-sample distribution of cross-correlation property, at least one of the series must be white noise.
+
+If this is not the case, there is no simple way to tell if a cross-correlation estimate is
+significantly different from zero.
+
+Hence in the SOI and Recruitment example we were guessing at the linear dependence relationship.
+
+Let's create two series that resemble SOI and recruitment
+
+$$
+x_t = 2cos\left(2\pi t \dfrac{1}{12}\right) + w_{t1} \\
+y_t = 2cos\left(2\pi [t+5] \dfrac{1}{12}\right) + w_{t2} \\
+w_{t1},w_{t2} \sim \text{ iid standard normal}
+$$
+
+
+The generated data are shown in the first two figures.
+
+The middle two figures show the auto-correlation plots. Both of which exhibits the cyclic nature of each series.
+
+The second to last plot is the cross-correlation plots, which appears to show cross-correlation even though the series are independent.
+
+The last plot is cross-correlation plot between $x_t$ and the prewhitened $y_t$, which shows that
+the two sequences are uncorrelated.
+
+By prewhitening $y_t$, we mean that the signal has been removed from the data by running a regression of $y_t$ on $cos(2\pi t)$ and $sin(2\pi t)$ and then subtracting off the predicted values $y_t - \widehat{y}_t$ (the raw residuals).
+
+```{r}
+set.seed(
+  seed = 823
+)
+n = 120 
+t = 1:n
+X = ts(
+  data = 2*cos(x = 2*pi*t/12) + rnorm(n = n),
+  freq = 12
+)
+Y = ts(
+  data = 2*cos(x = 2*pi*(t+5)/12) + rnorm(n = n),
+  freq = 12
+)
+Yw = resid(
+  object = lm(
+    formula = Y~ cos(2*pi*t/12) + sin(2*pi*t/12),
+    na.action = NULL
+  )
+)
+astsa::tsplot(
+  x = X
+)
+astsa::tsplot(
+  x = Y
+)
+astsa::acf1(
+  series = X,
+  max.lag = 48,
+  ylab = 'ACF(X)'
+)
+astsa::acf1(
+  series = Y,
+  max.lag = 48,
+  ylab = 'ACF(Y)'
+)
+astsa::ccf2(
+  x = X,
+  y = Y, 24)
+astsa::ccf2(
+  x = X,
+  y = Yw,
+  max.lag = 24,
+  ylim = c(-.6,.6)
+)
+```
+
+here's another example that's simpler, the series are trend stationary with just a hint of trend - but same result
+
+```{r}
+set.seed(
+  seed = 823
+)
+n = 250  
+t = 1:n
+X = 0.01*t + rnorm(n = n,mean = 0,sd = 2)
+Y = 0.01*t + rnorm(n = n)
+astsa::tsplot(
+  x = cbind(X,Y),
+  spaghetti = TRUE,
+  col = astsa::astsa.col(
+    col = c(4,2),
+    alpha = 0.7
+  ),
+  lwd = 2,
+  ylab = 'data'
+)
+astsa::ccf2(
+  x = X,
+  y = Y,
+  ylim = c(-.3,.3),
+  col = 4,
+  lwd = 2
+)
+Yw = astsa::detrend(
+  series = Y
+)  # whiten Y by removing trend
+astsa::ccf2(
+  x = X,
+  y = Yw,
+  ylim = c(-0.3,0.3),
+  col = 4,
+  lwd = 2
+)
+```
