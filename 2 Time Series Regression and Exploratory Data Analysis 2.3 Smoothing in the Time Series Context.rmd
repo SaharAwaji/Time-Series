@@ -1,0 +1,319 @@
+---
+title: "2 Time Series Regression and Exploratory Data Analysis 2.3 Smoothing in the Time Series Context"
+author: "Aaron Smith"
+date: "2022-11-26"
+output: html_document
+---
+
+This code is modified from Time Series Analysis and Its Applications, by Robert H. Shumway, David S. Stoffer 
+https://github.com/nickpoison/tsa4
+
+The most recent version of the package can be found at
+https://github.com/nickpoison/astsa/
+
+You can find demonstrations of astsa capabilities at
+https://github.com/nickpoison/astsa/blob/master/fun_with_astsa/fun_with_astsa.md
+
+In addition, the News and ChangeLog files are at
+https://github.com/nickpoison/astsa/blob/master/NEWS.md.
+
+The webpages for the texts and some help on using R for time series analysis can be found at 
+https://nickpoison.github.io/.
+
+UCF students can download it for free through the library.
+
+* convolution/moving average
+* kernel smoothing
+* polynomial trends
+* lowess curves
+* cubic splines
+* using these techniques for two time series and dropping the time aspect
+
+# Example 2.11 Moving Average Smoother
+
+Moving averages are useful in detecting long term trends, and seasonal components
+
+Symmetric moving average:
+
+$$
+m_t = \sum_{j = -k}^{k} a_jx_{t-j} \\
+a_j = a_{-j} \\
+a_j \geq 0 \\
+\sum_{j = -k}^{k} a_j = 1
+$$
+
+Let's run an example using 
+
+$$
+a_0 = a_{\pm 1} = a_{\pm 2} = \dots  = a_{\pm 5} = \dfrac{1}{12} \\
+a_{\pm 6} = \dfrac{1}{24}
+$$
+
+averaging over an entire year will remove seasonal temperature cycles and emphasize El Nino.
+
+Load the data
+
+```{r}
+data(
+  list = "soi",
+  package = "astsa"
+)
+```
+
+Use a forward and backward convolution/moving average to smooth the time series
+
+```{r}
+weights_filter = c(
+  0.5, rep(1,11), 0.5
+)
+weights_filter <- weights_filter/sum(
+  x = weights_filter
+)
+filter_soi = filter(
+  x = soi,
+  sides = 2,
+  filter = weights_filter
+)
+astsa::tsplot(
+  x = soi,
+  col = 4
+)
+lines(
+  x = filter_soi,
+  lwd = 2,
+  col = 6
+)
+```
+
+visualize the moving average weights
+
+```{r}
+#par(fig = c(.75, 1, .75, 1), new = TRUE) # the insert
+weights_extended = c(
+  rep(0,20),
+  weights_filter,
+  rep(0,20)
+)
+plot(
+  x = weights_extended,
+  type = "l",
+  ylim = c(
+    -0.02,0.1
+  ),
+  xaxt = 'n',
+  yaxt = 'n',
+  ann = FALSE
+)
+```
+
+The moving average does a good job of emphasizing the El Nino effect, but it is on the choppy side. Let's see if we can get a smoother model that also shows the El Nino effect using the normal distribution.
+
+
+# Example 2.12 Kernel Smoothing
+
+Kernel smoothing is a moving average smoother that uses a weight function, or kernel, to average the observations.
+
+$$
+m_t = \sum_{i = 1}^{n} w_i(t)x_i \\
+w_i(t) = \dfrac{K\left(\dfrac{t-i}{b}\right)}{\sum_{j = 1}^{n} K\left(\dfrac{t-j}{b}\right)} \\
+K \text{ is the kernel function}
+$$
+
+the normal kernel
+
+$$
+K(z) = \dfrac{1}{\sqrt{2\pi}} e^{-z^2/2}
+$$
+
+Use the normal kernel to smooth the time series with the ksmooth() function. The larger the bandwidth, the smoother the model.
+
+The kernels are scaled so that their quartiles (viewed as probability densities) are at  $\pm 0.25∗bandwidth$.
+
+The same bandwidth with different kernels can give different smoothness in their models.
+
+For standard normal, the quartiles are $\pm 0.674$.
+
+```{r}
+astsa::tsplot(
+  x = soi,
+  col = 4
+)
+lines(
+  x = ksmooth(
+    x = time(
+      x = soi
+    ),
+    y = soi,
+    kernel = "normal",
+    bandwidth = 1
+  ),
+  lwd = 2,
+  col = 6
+)
+```
+
+visualize the normal curve
+
+```{r}
+#par(fig = c(.75, 1, .75, 1), new = TRUE) # the insert
+curve(
+  expr = dnorm,
+  from = -3,
+  to = 3,
+  xaxt = 'n',
+  yaxt = 'n',
+  ann = FALSE
+)
+```
+
+# Example 2.13 Lowess
+
+Another approach to smoothing a time plot is nearest neighbor regression. The technique is based on k-nearest neighbors regression, wherein one uses only the data $\{x_{t−k/2},..., x_{t},\ldots, x_{t+k/2}\}$ to predict $x_t$ via regression, and then sets
+
+$$
+m_t = \widehat{x_t}
+$$
+
+Lowess is a method of smoothing that is rather complex, but the basic idea is close to nearest neighbor regression. 
+
+The figure shows smoothing of SOI using the R function lowess.
+
+First, a certain proportion of nearest neighbors to $x_t$ are included in a weighting scheme; values closer to $x_t$ in time get
+more weight. Then, a robust weighted regression is used to predict $x_t$ and obtain the smoothed values $m_t$. The larger the fraction of nearest neighbors included, the smoother the fit will be.
+
+In the figure, the smoother uses 5% of the data to obtain an estimate of the El Nino cycle of the data.
+
+In addition, a (negative) trend in SOI would indicate the long-term warming of the Pacific Ocean. To investigate this, we used lowess with the
+default smoothing span of 2/3.
+
+plot the time series with an order 1 polynomial trend, then add a lowess curve.
+ 
+```{r}
+# Figure 2.14 using the trend script
+astsa::trend(
+  series = soi,
+  lowess = TRUE
+)
+lines(
+  x = lowess(
+    x = soi,
+    f = 0.05
+  ),
+  lwd = 2,
+  col = 6
+) # El NiÃ±o cycle
+```
+
+# Example 2.14 Smoothing Splines
+
+One way to smooth data would be to fit a polynomial regression in terms of time. Such as a cubic polynomial would have 
+
+$$
+x_t = m_t + w_t \\
+m_t = \beta_0 + \beta_{1}t + \beta_2t^2 + \beta_3 t^3
+$$
+
+We could then fit this model with ordinary least squares.
+
+An extension of polynomial regression is to first divide time $t = 1,2,...,n$, into $k$ intervals, 
+
+$$
+[t_0 = 1, t_1], [t_1 + 1, t_2] , . . ., [t_{k−1} + 1, t_k = n] \\
+t_0,t_1,...,t_n \text{ are called knots}
+$$
+
+In each interval, one fits a polynomial regression, typically the order is 3, and this is called cubic splines.
+
+A related method is smoothing splines, which minimizes a compromise between the fit and the degree of smoothness given by
+
+$$
+\sum_{t = 1}^{n}[x_t - m_t]^2 + \lambda \int (m''_t)^2 dt \\
+\lambda > 0 \text{ controls the smoothness} \\
+$$
+
+* smaller $\lambda$ places more importance on model fit
+* larger $\lambda$ places more importance on fitting a smoother model
+
+Think of taking a long drive where mt is the position of your car at time $t$. In this case, $m′′(t)$ is instantaneous acceleration/deceleration, and $\int (m''_t)^2 dt$ is a measure of the total amount of acceleration and deceleration on your trip. 
+
+* A smooth drive would be one where a constant velocity, is maintained (i.e., $m′′(t) = 0$). 
+* A choppy ride would be when the driver is constantly accelerating and decelerating, such as beginning drivers tend to do.
+
+--------------------
+
+* If $λ = 0$, we don’t care how choppy the ride is, and this leads to $m_t = x_t$, the data, which are not smooth. 
+* If $λ$ is larger, we insist on no acceleration or deceleration ($m''_t = 0$); our drive must be at constant velocity, $m_t = c + v_t$, and consequently very smooth.
+
+$\lambda$ is a trade-off between linear regression (completely smooth) and the data itself (no smoothness). The larger the value of $\lambda$, the smoother the fit. 
+
+In R, the smoothing parameteris called spar and it is monotonically related to $\lambda$; type ?smooth.spline to view the help file for details. 
+
+The figure shows smoothing spline fits on the SOI series using spar = 0.5 to emphasize the El Nino cycle, and spar=1 to emphasize the trend.
+
+```{r}
+astsa::tsplot(
+  x = soi
+)
+lines(
+  x = smooth.spline(
+    x = time(
+      x = soi
+    ),
+    y = soi,
+    spar = 0.5 # smoothing parameter
+  ),
+  lwd = 2,
+  col = "blue"
+)
+lines(
+  x = smooth.spline(
+    x = time(
+      x = soi
+    ),
+    y = soi,
+    spar = 1
+  ),
+  lty = 2,
+  lwd = 2,
+  col = "red"
+)
+```
+
+# Example 2.15 Smoothing One Series as a Function of Another
+
+In addition to smoothing time plots, smoothing techniques can be applied to smoothing a time series as a function of another time series. 
+
+In this example, we smooth the scatterplot of two contemporaneously measured time series, mortality as a function of temperature.
+
+There is a nonlinear relationship between mortality and temperature. Continuing along these lines, the figure shows a scatterplot of mortality, $M_t$, and temperature, $T_t$, along with $M_t$ smoothed as a function of $T_t$ using lowess. 
+
+Note that mortality increases at extreme temperatures, but in an asymmetric way; mortality is higher at colder temperatures than at hotter
+temperatures. The minimum mortality rate seems to occur at approximately 83 degrees F.
+
+create a scatterplot of two time series (time is omitted from plot), then plot a lowess curve of the scatterplot points
+
+```{r}
+data(
+  list = c(
+    "tempr","cmort"
+  ),
+  package = "astsa"
+)
+astsa::tsplot(
+  x = tempr,
+  y = cmort,
+  type = "p",
+  xlab = "Temperature",
+  ylab = "Mortality",
+  pch = 20,
+  col = 4
+)
+lines(
+  x = lowess(
+    x = tempr,
+    y = cmort
+  ),
+  col = 6,
+  lwd = 2
+)
+```

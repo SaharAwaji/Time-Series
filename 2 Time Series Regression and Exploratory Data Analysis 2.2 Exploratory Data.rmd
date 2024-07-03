@@ -1,0 +1,751 @@
+---
+title: 2 Time Series Regression and Exploratory Data Analysis 2.2 Exploratory Data
+  Analysis
+author: "Aaron Smith"
+date: "2022-11-24"
+output: html_document
+---
+
+This code is modified from Time Series Analysis and Its Applications, by Robert H. Shumway, David S. Stoffer 
+https://github.com/nickpoison/tsa4
+
+The most recent version of the package can be found at
+https://github.com/nickpoison/astsa/
+
+You can find demonstrations of astsa capabilities at
+https://github.com/nickpoison/astsa/blob/master/fun_with_astsa/fun_with_astsa.md
+
+In addition, the News and ChangeLog files are at
+https://github.com/nickpoison/astsa/blob/master/NEWS.md.
+
+The webpages for the texts and some help on using R for time series analysis can be found at 
+https://nickpoison.github.io/.
+
+UCF students can download it for free through the library.
+
+Punchline of this video:
+
+* if we have a trend stationary time series, we use detrending to get the stationary component
+* if we have a random walk time series, we use differencing to get a stationary time series
+
+Our time series needs to be stationary for averaging the values over time to make sense.
+
+We use sample autocorrelation to measure (estimate) the dependence of values between each other.
+
+When we use autocorrelation, we are assuming that the dependence between values is constant over the time interval.
+
+* stationarity in mean
+* stationarity in autocorrelation
+
+Often, this is not the case.
+
+
+The Johnson & Johnson series has a mean that increases exponentially over time, and the increase in the magnitude of the fluctuations around this trend causes changes in the covariance function; the variance of the process, for example, clearly increases as one progresses over the length of the series. 
+
+Johnson and Johnson Quarterly Earnings Per Share
+
+Johnson and Johnson quarterly earnings per share, 84 quarters (21 years) measured from the first quarter of 1960 to the last quarter of 1980.
+
+Note the gradually increasing underlying trend and the rather regular variation superimposed on the trend that seems to repeat over quarters.
+
+```{r}
+data(
+  list = "jj",
+  package = "astsa"
+)
+astsa::tsplot(
+  x = jj,
+  col = 4,
+  type="o",
+  ylab = "Quarterly Earnings per Share"
+)
+```
+
+The global temperature series shown contains some evidence of a trend over time.
+
+```{r}
+data(
+  list = "globtemp",
+  package = "astsa"
+)
+astsa::tsplot(
+  x = globtemp,
+  col = 4,
+  type = "o",
+  ylab = "Global Temperature Deviations"
+)
+```
+
+## Trend stationary
+
+Trend stationary model is the easiest form of nonstationarity to work with. It has stationary behavior around a trend.
+
+$$
+x_t = \mu_t + y_t \\
+\mu_t \text{ is the trend} \\
+y_t \text{ is a stationary process}
+$$
+
+Frequently we will estimate the trend, then find the stationary process by working with the residuals
+
+$$
+\widehat{y}_t = x_t - \widehat{\mu}_t
+$$
+
+# Example 2.4 Detrending Chicken Prices
+
+Let's use a trend stationary model
+
+$$
+x_t = \mu_t + y_t \\
+\mu_t = \beta_0 + \beta_1 t
+$$
+
+load the data
+
+```{r}
+data(
+  list = "chicken",
+  package = "astsa"
+)
+```
+
+```{r}
+lm(
+  formula = chicken ~ time(chicken)
+)
+```
+
+plot the time series
+
+```{r}
+astsa::tsplot(
+  x = chicken,
+  main = "original time series"
+)
+```
+
+$$
+\widehat{\mu}_t = -7131 + 3.59 t \\
+\widehat{y}_t = x_t + 7131 - 3.59 t
+$$
+
+```{r}
+plot(
+  x = time(chicken),
+  y = chicken - predict(
+    object = lm(
+      formula = chicken ~ time(chicken)
+    )
+  ),
+  type = "l"
+)
+```
+
+plot the detrended time series
+
+```{r}
+# astsa now has a detrend script, so Figure 2.4 can be done as
+#par(mfrow=2:1)
+astsa::tsplot(
+  x = astsa::detrend(
+    series = chicken
+  ),
+  main = "detrended"
+)
+```
+
+plot the difference between observations as a time series
+
+```{r}
+astsa::tsplot(
+  x = diff(
+    x = chicken
+  ),
+  main = "first difference"
+)
+```
+
+# random walk with drift model,
+
+$$
+\mu_t = \delta + \mu_{t-1} + w_t \\
+\delta \text{ the drift} \\
+w_t \text{ white noise}
+$$
+
+If $x_t$ is trend stationary, and the trend is a random walk with drift
+
+$$\begin{align}
+x_t - x_{t-1} =& (\mu_{t} + y_{t}) - (\mu_{t-1} + y_{t-1}) \\
+ =& (\mu_{t} - \mu_{t-1}) + ( y_{t} - y_{t-1}) \\
+ =& (\delta + w_t) + ( y_{t} - y_{t-1}) \\
+\end{align}$$
+
+Since $\delta$ is constant, $E(w_t) = 0$, and $y_t$ is stationary, the difference of consecutive observations has constant expected value.
+
+Let $z_t =& y_{t} - y_{t-1}$, then
+
+$$\begin{align}
+\gamma_z(h) =& cov(z_{t+h},z_t) \\
+=& cov(y_{t+h} - y_{t+h-1},y_{t} - y_{t-1}) \\
+=& cov(y_{t+h},y_{t}) + cov(y_{t+h},y_{t-1}) + cov(y_{t+h-1},y_{t}) + cov(y_{t+h-1},y_{t-1}) \\
+=& \gamma_y(h) + \gamma_y(h+1) + \gamma_y(h-1) + \gamma_y(h) \\
+=& \gamma_y(h+1) + 2\gamma_y(h) + \gamma_y(h-1)
+\end{align}$$
+
+this is independent of time
+
+An advantage of differencing is that no parameter is estimated.
+
+A disadvantage of differencing is that it does not provide an estimate of the stationary component $y_t$.
+
+Use differencing when you want a stationary time series from a non-stationary time series.
+
+Use detrending if you want to estimate a stationary component $y_t$.
+
+If $x_t = \mu_t + y_t$ and $\mu_t = \beta_0 + \beta_1 t$, then
+
+$$\begin{align}
+x_t - x_{t-1} =& (\mu_t + y_t) - (\mu_{t-1} + y_{t-1}) \\
+=& (\beta_0 + \beta_1 t + y_t) - (\beta_0 + \beta_1 (t-1) + y_{t-1}) \\
+=& \beta_1 + y_t - y_{t-1}
+\end{align}$$
+
+## differencing notation
+
+$$
+\bigtriangledown x_t = x_t - x_{t-1}
+$$
+
+We use first differences to estimate a linear trend.
+
+We use second differences to estimate a quadratic trend.
+
+# the backshift operator
+
+$$
+B x_t = x_{t-1} \\
+B^2 x_t = B(B x_t) = B(x_{t-1}) = x_{t-2} \\
+B^k x_t = x_{t-k} \\
+B^{-1}B x_t = x_t = B B^{-1} x_t \ (B^{-1} \text{ is the forward shift operator}) \\
+B^0 x_t = x_t
+$$
+
+$$
+\bigtriangledown x_t = (B^0 - B) x_t \\
+\bigtriangledown^2 x_t = (B^0 - B)^2 x_t = (B^0 - 2B + B^2) x_t = x_t - 2 x_{t-1} + x_{t-2} \\
+\bigtriangledown^2 x_t = \bigtriangledown (x_t - x_{t-1}) = (x_t - x_{t-1}) - (x_{t_1} - x_{t-2}) = x_t - 2 x_{t-1} + x_{t-2}
+$$
+
+# Definition 2.5 Differences of order d
+
+$$
+\bigtriangledown^d = (B^0 - B)^d
+$$
+
+The first difference is a a linear filter applied to eliminate a trend. 
+
+Other filters, formed by averaging values near $x_t$, can produce adjusted series that eliminate other kinds of unwanted fluctuations.
+
+The differencing technique is an important component of the ARIMA model of Box and Jenkins.
+
+# Example 2.5 Differencing Chicken Prices
+
+The first difference of the chicken prices series produces different results than removing trend by detrending via regression.
+
+The differenced series does not contain the long (five-year) cycle we observe in the detrended series.
+
+The differenced series exhibits an annual cycle that was obscured in the original or detrended data.
+
+plot the autocorrelation of the time series, detrended time series, and the differences
+
+```{r}
+# and Figure 2.5 as
+#dev.new()
+#par(mfrow=c(3,1))     # plot ACFs
+astsa::acf1(
+  series = chicken,
+  max.lag = 48,
+  main = "chicken"
+)
+astsa::acf1(
+  series = astsa::detrend(
+    series = chicken
+  ),
+  max.lag = 48,
+  main = "detrended"
+)
+astsa::acf1(
+  series = diff(
+    x = chicken
+  ),
+  max.lag = 48,
+  main = "first difference"
+)
+``` 
+
+# Example 2.6 Differencing Global Temperature
+
+The global temperature series appears to behave more as a random walk than a trend stationary series. 
+
+Rather than detrend the data, it would be more appropriate to use differencing to coerce it into stationarity.
+
+In this case it appears that the differenced process shows minimal autocorrelation, which may imply the global temperature series is nearly a random walk with drift.
+
+It is interesting to note that if the series is a random walk with drift, the mean of the differenced series, which is an estimate of the drift, is about .008, or an increase of about one degree centigrade per 100 years.
+
+load the data
+
+```{r}
+data(
+  list = c("globtemp","gtemp"),
+  package = "astsa"
+)
+```
+
+plot the time series 
+
+```{r}
+astsa::tsplot(
+  x = globtemp
+)
+astsa::tsplot(
+  x = gtemp
+)
+```
+
+```{r}
+#par(mfrow=c(2,1))
+astsa::tsplot(
+  x = diff(
+    x = globtemp
+  ),
+  type = "o"
+)
+astsa::tsplot(
+  x = diff(
+    x = gtemp
+  ),
+  type = "o"
+)
+mean(
+  x = diff(
+    x = globtemp
+  )
+)     # drift estimate = .008
+mean(
+  x = diff(
+    x = gtemp
+  )
+)     # drift estimate = .0066
+```
+
+autocorrelation of the differences
+
+```{r}
+astsa::acf1(
+  series = diff(
+    x = globtemp
+  ),
+  max.lag = 48,
+  main = ""
+)
+astsa::acf1(
+  series = diff(
+    x = gtemp
+  ),
+  max.lag = 48,
+  main = ""
+)
+```
+
+## log-transformations
+
+frequently, log-transformations of time series will equalize the variability over a length of time. Especially if larger fluctuations tend to appear with larger observed values.
+
+$$
+y_t = log(x_t)
+$$
+
+## Box-Cox transformation
+
+Frequently we use the Box-Cox transformation to get a variable that looks more similar to normally distributed, or to improve a variable as an input for another time series.
+
+$$
+y_t = \begin{cases}
+\dfrac{x_t^\lambda - 1}{\lambda} & if \ \lambda \neq 0 \\
+log(x_t) & if \ \lambda = 0
+\end{cases}
+$$
+
+# Example 2.7 Paleoclimatic Glacial Varves
+
+Melting glaciers deposit yearly layers of sand and silt during the spring melting seasons, which can be reconstructed yearly over a period ranging from the time deglaciation began in New England (about 12,600 years ago) to the time it ended (about 6,000 years ago). Such sedimentary deposits, called varves, can be used as proxies for paleoclimatic parameters, such as temperature, because, in a warm year, more sand and silt are deposited from the receding glacier.
+
+The plot shows the thicknesses of the yearly varves collected from one location in Massachusetts for 634 years, beginning 11,834 years ago. For further information.
+
+```{r}
+data(
+  list = "varve",
+  package = "astsa"
+)
+```
+
+time series plot of the time series
+
+```{r}
+#layout(matrix(1:4,2), widths=c(2.5,1))
+astsa::tsplot(
+  x = varve,
+  main = "",
+  ylab = "",
+  col = 4
+)
+mtext(
+  text = "varve",
+  side = 3,
+  line = 0.5,
+  cex = 1.2,
+  font = 2,
+  adj = 0
+)
+```
+
+Because the variation in thicknesses increases in proportion to the amount deposited, a logarithmic transformation could remove the nonstationarity observable in the variance as a function of time. It is clear that this improvement has occurred.
+
+time series of the log-transform of the time series
+
+```{r}
+astsa::tsplot(
+  x = log(varve),
+  main = "",
+  ylab = "",
+  col = 4
+)
+mtext(
+  text = "log(varve)",
+  side = 3,
+  line = 0.5,
+  cex = 1.2,
+  font = 2,
+  adj = 0
+)
+```
+
+We may also plot the histogram of the original and transformed data to argue that the approximation to normality is improved. The ordinary first differences. We note that the first differences have a
+
+normal plots of the time series and the log-transformed time series
+
+```{r}
+hist(
+  x = varve
+)
+qqnorm(
+  y = varve,
+  main = "",
+  col = 4
+)
+qqline(
+  y = varve,
+  col = 2,
+  lwd = 2
+)
+hist(
+  x = log(varve)
+)
+qqnorm(
+  y = log(varve),
+  main = "",
+  col = 4
+)
+qqline(
+  y = log(varve),
+  col = 2,
+  lwd = 2
+)
+```
+
+## Scatterplot matrices for lagged data
+
+We use scatterplot matrices to visualize the relationship between and time series and its lags.
+
+The autocorrelation function tells us whether a substantial linear relation exists between the series and its own lagged values. The ACF gives a profile of the linear correlation at all possible lags and shows which values of h lead to the
+best predictability.
+
+The restriction of this idea to linear predictability, which ignores non-linear relationships between a time series and its lags.
+
+# Example 2.8 Scatterplot Matrices, SOI and Recruitment
+To check for nonlinear relations of this form, it is convenient to display a lagged scatterplot matrix.
+
+The sample autocorrelations are displayed in the upper right-hand corner and superimposed on the scatterplots are locally weighted scatterplot smoothing (lowess) lines that can be used to help discover any nonlinearities.
+
+load the data
+
+```{r}
+data(
+  list = c("soi","rec"),
+  package = "astsa"
+)
+```
+
+We notice that lags 1, 12, 2, and 11 have the strongest correlations. SOI is over months so -12 corresponds to the same month in the previous year.
+
+lag plot on soi
+
+```{r}
+astsa::lag1.plot(
+  series = soi,
+  max.lag = 12,
+  col = astsa::astsa.col(
+    col = 4,
+    alpha = 0.3
+  ),
+  cex = 1.5,
+  pch = 20
+)
+```
+
+In a previous video we established a relationship between SOI and the recruitment time series.
+
+We see that there is a relationship between recruitment and SOI lagged by 5, 6, 7, 8.
+
+The negative correlation signs indicate that increases (decreases) in SOI lead to decreases (increases) in recruitment.
+
+The curvative in the LOESS lines leads us to conjecture that different signs of SOI have different impacts on recruitment.
+
+lag plot of soi leading rec
+
+```{r}
+astsa::lag2.plot(
+  series1 = soi,
+  series2 = rec,
+  max.lag = 8,
+  col = astsa::astsa.col(
+    col = 4,
+    alpha = 0.3
+  ),
+  cex = 1.5,
+  pch = 20
+)
+```
+
+# Example 2.9 Regression with Lagged Variables 
+
+$$
+R_t = \beta_0 + \beta_1 S_{t-6} + w_t
+$$
+
+Let's expand this model with a dummy variable to incorporate the positive/negative findings for SOI
+
+$$\begin{align}
+R_t =& \beta_0 + \beta_1 S_{t-6} + \beta_2 D_{t-6} + \beta_3 D_{t-6}S_{t-6} + w_t \\
+D_t =& \begin{cases}
+0 & if \ S_t < 0 \\
+1 & if \ S_t \geq 0
+\end{cases} \\
+R_t =& \begin{cases}
+\beta_0 + \beta_1 S_{t-6} +w_t & if \ S_{t_6} < 0\\
+(\beta_0  + \beta_2) + (\beta_1 + \beta_3) S_{t-6} + w_t & if \ S_{t_6} \geq 0
+\end{cases}
+\end{align}$$
+
+```{r}
+dummy = ifelse(
+  test = soi < 0,
+  yes = 0,
+  no = 1
+)
+fish  = ts.intersect(
+  rec = rec,
+  soiL6 = lag(
+    x = soi,
+    k = -6
+  ),
+  dL6 = lag(
+    x = dummy,
+    k = -6
+  ),
+  dframe = TRUE
+)
+lm_fish <- lm(
+  formula = rec~ soiL6*dL6,
+  data = fish,
+  na.action = NULL
+)
+summary(
+  object = lm_fish
+)
+astsa::tsplot(
+  x = fish$soiL6,
+  y = fish$rec,
+  type = 'p',
+  col = 4,
+  ylab = 'rec',
+  xlab = 'soiL6'
+)
+lines(
+  x = lowess(
+    x = fish$soiL6,
+    y = fish$rec
+  ),
+  col = 4,
+  lwd = 2
+)
+points(
+  x = fish$soiL6,
+  y = fitted(
+    object = lm_fish
+  ),
+  pch = '+',
+  col = 6
+)
+```
+
+time series plot of the residuals, there is autocorrelation in the residuals
+
+```{r}
+astsa::tsplot(
+  x = resid(
+    object = lm_fish
+  )
+) # not shown ...
+astsa::acf1(
+  series = resid(
+    object = lm_fish
+  )
+)   # ... but obviously not noise
+```
+
+
+# Example 2.10 Using Regression to Discover a Signal in Noise
+
+Frequently we can statistically capture periodic behavior without knowing the mathematical function of the signal.
+
+The trigonometric identities and the orthogonality of Fourier series enables regression to estimate periodic signal.
+
+$$
+cos(\alpha + \beta) = cos(\alpha)cos(\beta) - sin(\alpha)sin(\beta) \\
+cos\left(2\pi x + \dfrac{3\pi}{5}\right) = cos\left(2\pi x\right)cos\left(\dfrac{3\pi}{5}\right) - sin\left(2\pi x\right)sin\left(\dfrac{3\pi}{5}\right) \\
+2cos\left(2\pi x + \dfrac{3\pi}{5}\right) = 2cos\left(\dfrac{3\pi}{5}\right)cos\left(2\pi x\right) - 2sin\left(\dfrac{3\pi}{5}\right)sin\left(2\pi x\right) \\
+2cos\left(2\pi x + \dfrac{3\pi}{5}\right) \approx -0.618034cos\left(2\pi x\right) - -1.902113sin\left(2\pi x\right) \\
+\text{true coefficients: } -0.618034, -1.902113
+$$
+
+
+
+```{r}
+set.seed(
+  seed = 823
+)  # so you can reproduce these results
+x  = 2*cos(x = 2*pi*(1:500)/50 + 0.6*pi) + rnorm(n = 500,mean = 0,sd = 5)
+z1 = cos(
+  x = 2*pi*(1:500)/50
+)  
+z2 = sin(
+  x = 2*pi*(1:500)/50
+)
+M_trig <- data.frame(
+  x = x,
+  z1 = z1,
+  z2 = z2
+)
+lm_trig <- lm(
+  formula = x ~ 0 + z1 + z2,
+  data = M_trig
+)
+summary(
+  object = lm_trig
+)  # zero to exclude the intercept
+astsa::tsplot(
+  x = x,
+  col = 4
+)
+astsa::tsplot(
+  x = x,
+  col = astsa::astsa.col(
+    col = 4,
+    alpha = 0.7
+  ),
+  ylab = expression(hat(x))
+)
+lines(
+  x = fitted(
+    object = lm_trig
+  ),
+  col = 2,
+  lwd = 2
+)
+```
+
+increase the sample size to show convergence of the coefficients
+
+```{r}
+set.seed(
+  seed = 823
+)  # so you can reproduce these results
+x  = 2*cos(x = 2*pi*(1:(1e6))/(1e5) + 0.6*pi) + rnorm(n = (1e6),mean = 0,sd = 5)
+z1 = cos(
+  x = 2*pi*(1:(1e6))/(1e5)
+)  
+z2 = sin(
+  x = 2*pi*(1:(1e6))/(1e5)
+)
+M_trig <- data.frame(
+  x = x,
+  z1 = z1,
+  z2 = z2
+)
+lm_trig <- lm(
+  formula = x ~ 0 + z1 + z2,
+  data = M_trig
+)
+summary(
+  object = lm_trig
+)  # zero to exclude the intercept
+```
+
+Write estimated model as one trigonometric function. In general we write a sine/cosine wave using sine, but since the original function is written as a cosine we will use cosine. (Sine and cosine are shifts of each other.) Since the author used $2\pi$ in every trigonometric function, we take the point of view that the period/frequency is known. Amplitude and phase shift are unknown. Since there is no intercept, there is no phase shift.
+
+$$\begin{align}
+-0.6172813cos(2\pi t) -1.9082887 sin(2\pi t) =& \widehat{A}cos(2\pi t + \widehat{\theta}) \\
+ =& \widehat{A} cos(2\pi t)cos(\widehat{\theta}) - \widehat{A} sin(2\pi t)sin(\widehat{\theta}) \\
+\widehat{A} cos(\widehat{\theta}) =& -0.6172813 \\
+- \widehat{A} sin(\widehat{\theta}) =& -1.9082887 \\
+\widehat{A}^2 cos^2(\widehat{\theta}) + \widehat{A}^2 sin^2(\widehat{\theta}) =& \widehat{A}^2 = (-0.6172813)^2 + (-1.9082887)^2 = 4.022602 \\
+|\widehat{A}| =& 2.005643 \\
+cos(\widehat{\theta}) =& -0.3077723 \\
+sin(\widehat{\theta}) =& 0.9514600 \\
+\widehat{\theta} =& cos^{-1}(-0.3077723) = 1.883647 \\
+\widehat{A}cos(2\pi t + \widehat{\theta}) =& 2.005643 cos(2\pi t + 1.883647) \\
+Acos(2\pi t + \theta) =& 2 cos\left(2\pi t + \dfrac{3}{5}\pi\right) \\
+\dfrac{3}{5}\pi \approx& 1.884956
+\end{align}$$
+
+
+
+```{r}
+t0 <- seq(
+  from = 0,
+  to = 1,
+  length = 10000
+)
+x_correct <- 2*cos(2*pi*t0 + 3*pi/5)
+x_estimated <- 2.005643*cos(2*pi*t0 + 1.883647)
+library(ggplot2)
+M <- data.frame(
+  t0 = t0,
+  correct_model = x_correct,
+  estimated_model = x_estimated
+)
+M <- tidyr::gather(
+  data = M,
+  key = "model",
+  value = "x",
+  -t0
+)
+ggplot(M) + 
+  aes(x = t0,y = x,group = model,color = model) + 
+  geom_line() +
+  theme_bw()
+```

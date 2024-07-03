@@ -1,0 +1,593 @@
+---
+title: 2 Time Series Regression and Exploratory Data Analysis 2.1 Classical Regression
+  in the Time Series Context
+author: "Aaron Smith"
+date: '2022-11-20'
+output: html_document
+---
+
+This code is modified from Time Series Analysis and Its Applications, by Robert H. Shumway, David S. Stoffer 
+https://github.com/nickpoison/tsa4
+
+The most recent version of the package can be found at
+https://github.com/nickpoison/astsa/
+
+You can find demonstrations of astsa capabilities at
+https://github.com/nickpoison/astsa/blob/master/fun_with_astsa/fun_with_astsa.md
+
+In addition, the News and ChangeLog files are at
+https://github.com/nickpoison/astsa/blob/master/NEWS.md.
+
+The webpages for the texts and some help on using R for time series analysis can be found at 
+https://nickpoison.github.io/.
+
+UCF students can download it for free through the library.
+
+```{r,eval = FALSE}
+#install.packages(
+#  pkgs = "remotes"
+#)
+#remotes::install_github(
+#  repo = "nickpoison/astsa/astsa_build"
+#)
+```
+
+```{r}
+options(
+  digits = 3,
+  scipen = 99
+)
+rm(
+  list = ls()
+)
+```
+
+Say that our time series $x_t,t = 1,2,\ldots,n$ are influenced by some other independent inputs $z_{t1},z_{t2},\ldots,z_{tq}$.
+
+We treat the inputs as perfectly measures, known values.
+
+$$
+x_t = \beta_0 + \beta_1z_{t1} + \beta_2z_{t2} + \ldots  + \beta_qz_{tq} + w_t \\
+w_t \ iid \ normal(0,\sigma^2) \ \  (\sigma^2 \text{is constant wrt time, no autocorrelated errors})
+$$
+
+For time series regression, it is rarely the case that the noise is white, but for now we will use this assumption.
+
+# Example 2.1 Estimating a Linear Trend
+
+Consider the monthly price (per pound) of a chicken in the US from mid-2001 to mid-2016 (180 months)
+
+There is an obvious upward trend in the series, and we might use simple linear regression to estimate that trend by fitting the model
+
+$$
+x_t = \beta_0 + \beta_1 z_t + w_t \\
+z_t \text{ is the year + month as a number 2002.25 for March 2022} \\
+w_t \text{ is iid normal, no autocorrelated errors }
+$$
+
+## Error sum of squares
+
+$$
+Q = \sum_{t=1}^{n} w_t^2 = \sum_{t=1}^{n} (x_t - [\beta_0 + \beta_1 z_t])^2
+$$
+
+We find the ordinary least squares estimate of the coefficients by minimizing $Q$ wrt $\beta_0,\beta_1$ using partial derivatives
+
+$$
+\dfrac{\partial Q}{\partial \beta_i} = 0, i = 0,1
+$$
+
+$$
+\widehat{\beta}_1 = \dfrac{\sum_{t = 1}^{n}(x_t - \bar{x})(z_t - \bar{z})}{\sum_{t = 1}^{n}(z_t - \bar{z})^2} \\
+\widehat{\beta}_0 = \bar{x} - \widehat{\beta}_1 \bar{z}
+$$
+
+The estimated slope is 3.6 with a standard error of 0.08 (statistically significant)
+
+Monthly price of a pound of chicken
+
+Poultry (chicken), Whole bird spot price, Georgia docks, US cents per pound
+
+The format is: Time-Series [1:180] from August 2001 to July 2016: 65.6 66.5 65.7 64.3 63.2 ...
+
+```{r}
+data(
+  list = "chicken",
+  package = "astsa"
+)
+# astsa now has a trend script, so Figure 2.1 can be done in one line
+astsa::trend(
+  series = chicken,
+  lwd = 2
+)    # includes a 95% CI
+# in the text
+lm_chicken <- lm(
+  formula = chicken~time(chicken)
+) # regress price on time
+summary(
+  object = lm_chicken
+)
+astsa::tsplot(
+  x = chicken,
+  ylab = "cents per pound",
+  col = 4,
+  lwd = 2
+)
+abline(
+  reg = lm_chicken
+) # add the fitted regression line to the plot            
+```
+
+## Multiple linear regression
+
+We can expand our model to use more predictor variables, which leads to more coefficients.
+
+$$
+z_t = \begin{pmatrix}
+1 \\ z_{t1} \\ z_{t2} \\ \vdots \\ z_{tq}
+\end{pmatrix} \\
+\beta = \begin{pmatrix}
+\beta_0 \\ \beta_1 \\ \beta_2 \\ \vdots \\ \beta_q
+\end{pmatrix} \\
+x_t = \beta_0 + \beta_1 z_{t1} + \beta_2 z_{t2} + \dots + \beta_{tq} z_{tq} + w_t = \beta'z_t + w_t \\
+w_t \sim iid \ normal(0,\sigma_w^2) \\
+Q = \sum_{t = 1}^{n} w_t^2 = \sum_{t = 1}^{n} (x_t - \beta'z_t)^2
+$$
+
+Once again, we find the ordinary least squares estimate of the coefficients by minimizing $Q$ wrt $\beta$. We can do this via matrix algebra and projections, or via partial derivatives.
+
+## Normal equations
+
+$$
+\left(\sum_{t = 1}^{n} z_t z_t'\right)\widehat{\beta} = \sum_{t = 1}^{n} z_t x_t \\
+\widehat{\beta} = \dfrac{\sum_{t = 1}^{n} z_t x_t}{\left(\sum_{t = 1}^{n} z_t z_t'\right)} \\
+SSE = \sum_{t = 1}^{n}(x_t - \widehat{\beta}' z_t)^2
+$$
+
+## Gauss Markov Theorem: Best linear unbiased estimator (BLUE) 
+
+The ordinary least squares estimate of the coefficients is unbiased, and has the least variance of all unbiased coefficient estimators
+
+$$
+E(\widehat{\beta}) = \beta \\
+cov(\widehat{\beta}) = \sigma_w^2 \left( \sum_{t = 1}^{n}z_t z_t' \right)^{-1} \\
+C = \left( \sum_{t = 1}^{n}z_t z_t' \right)^{-1}
+$$
+
+## Estimating the variance
+
+$$
+s_w^2 = MSE = \dfrac{SSE}{n - (1 + q)} \\
+E(s_w^2) = \sigma_w^2
+$$
+
+## Distribution of coefficients
+
+When the iid normality assumption holds
+
+$$
+\dfrac{\widehat{\beta}_i - \beta_i}{s_w \sqrt{c_{ii}}} \sim t(n - (1 + q))
+$$
+
+We frequently use this to run the hypothesis tests
+
+$$
+H_0: \beta_i = 0, i = 1,2,\ldots ,q
+$$
+
+## Competing models, full versus reduced
+
+Suppose we want to modify our model by removing some input variables
+
+$$
+z_{t,1:r} = \{z_{t1},z_{t2},\ldots,z_{tr}\} \text{ (subset of the full model's inputs, subscript indices are different)} \\
+x_t = \beta_0 + \beta_1 z_{t1} + \beta_2 z_{t2} + \dots + \beta_{tr} z_{tr} + w_t \\
+$$
+
+## Analysis of variance for regression for full vs reduced models
+
+When we run analysis of variance to compare full versus reduced models, the hypothesis test is
+
+$$
+H_0: \beta_{r+1} = \beta_{r+2} = \ldots = \beta_{q} = 0 \\
+H_a: \text{ one or more of these coefficients is not zero}
+$$
+
+### ANOVA Test Statistic
+
+$$
+F = \dfrac{\frac{SSE_r - SSE}{q-r}}{\frac{SSE}{n - 1 - q}} = \dfrac{MSR}{MSE}
+$$
+
+Mathematically, $SSE_r \geq SSE$ (the full model is more flexible because of the extra coefficients)
+
+If $H_0: \beta_{r+1} = \beta_{r+2} = \ldots = \beta_{q} = 0$, then $SSE_r \approx SSE$ because the estimations of the dropped coefficients will be close to zero.
+
+Roughly speaking:
+
+* if $SSE_r - SSE$ is big, use the full model
+* if $SSE_r - SSE$ is small, use the reduced model
+
+When the reduced model is correct, under the normal assumptions and the null hypothesis 
+
+$$
+\dfrac{MSR}{MSE} \sim F_{q-r,n-1-q}
+$$
+
+$$\begin{matrix}
+\text{Source} & \text{Degress of Freedom} & \text{Sum of Squares} & \text{Mean Squares} & \text{F} \\
+\hline \\
+z_{t,r+1:q} & q-r & SSR = SSE_r - SSE & MSR = \dfrac{SSR}{q-r} & F = \dfrac{MSR}{MSE} \\
+Error & n - (1 + q) & SSE & MSE = \dfrac{SSE}{n - 1 - q}
+\end{matrix}$$
+
+## The constant model (reduced model has no inputs)
+
+$$
+H_0: \beta_{1} = \beta_{2} = \ldots = \beta_{q} = 0 \\
+H_a: \text{ one or more of these coefficients is not zero}
+$$
+
+## Coefficient of Determination, Proportion of variance accounted for by the full model
+
+$$
+R^2 = \dfrac{SSE_0 - SSE}{SSE_0} \\
+SSE_0 = \sum_{t = 1}^{n}(x_t - \bar{x})^2 \ (SSE_r \text{ with no inputs})
+$$
+
+$$
+x_t = \beta_0 + w_t
+$$
+
+## Stepwise model selection
+
+We can use the full-reduced model proceedure to stepwise 
+
+* grow a simple model to a model with more inputs (forward selection)
+* reduce a complex more to a simplier model (backwards elimination)
+
+## Maximum likelihood estimator of the variance
+
+$$
+\widehat{\sigma}_k^2 = \dfrac{SSE_k}{n} \ (k\text{ is the number of inputs)}
+$$
+
+## Definition 2.1 Akaike’s Information Criterion (AIC)
+
+The Akaike’s Information Criterion selects the model with the smallest AIC
+
+$$
+AIC = -2log\binom{maximum}{likelihood} + 2k = log(\widehat{\sigma}_k^2) + \dfrac{n + 2k}{n} \\
+log(\widehat{\sigma}_k^2) \text{ addresses the model fit} \\
+\dfrac{n + 2k}{n} \text{ penalty term for the number of inputs/complexity}
+$$
+
+There are a lot of variations on this calculation. Check your software's documentation before comparing AIC from different plaforms or functions.
+
+## Definition 2.2 AIC, Bias Corrected (AICc)
+
+$$
+AIC_c = log(\widehat{\sigma}_k^2) + \dfrac{n + k}{n - k - 2}
+$$
+
+## Definition 2.3 Bayesian Information Criterion (BIC)
+
+The Bayesian Information Criterion uses a larger penalty than AIC. BIC favors smaller models than AIC does.
+
+$$
+BIC = log(\widehat{\sigma}_k^2) + \dfrac{k log(n)}{n}
+$$
+
+* $BIC$ does well at getting the correct order in large samples
+* $AIC_c$ tends to be superior in smaller samples where the relative number of parameters is large
+
+# Example 2.2 Pollution, Temperature and Mortality
+
+The figures are from a study of the possible effects of temperature and pollution on weekly mortality in Los Angeles County. 
+
+Note the strong seasonal components in all of the series, corresponding to winter-summer variations and the downward trend in the cardiovascular mortality over the 10-year period.
+
+The scatterplot matrix indicates a possible linear relationship between mortality and the pollutant particulates and a possible relation to temperature.
+
+Note the curvilinear shape of the temperature mortality curve, indicating that higher temperatures as well as lower temperatures are associated with increases in cardiovascular mortality.
+
+Based on the scatterplot matrix, we entertain, tentatively, four models.
+
+$$\begin{aligned}
+M_t =& \beta_0 + \beta_1 (time) + \beta_2 (temperature - (mean \ temperature) + \beta_3 (temperature - (mean \ temperature))^2 +  \beta_4 (particles) + w_t \\
+M_t =& \beta_0 + \beta_1 (time) + \beta_2 (temperature - (mean \ temperature) + \beta_3 (temperature - (mean \ temperature))^2 + w_t \\
+M_t =& \beta_0 + \beta_1 (time) + \beta_2 (temperature - (mean \ temperature) + w_t \\
+M_t =& \beta_0 + \beta_1 (time) + w_t \\
+M_t =& \beta_0 + w_t \\
+\end{aligned}$$
+
+Load the data
+
+```{r}
+data(
+  list = c("cmort","tempr","part"),
+  package = "astsa"
+)
+```
+
+Separate plots
+
+```{r}
+#par(mfrow=c(3,1))
+astsa::tsplot(
+  x = cmort,
+  main = "Cardiovascular Mortality",
+  col = 6,
+  type = "o",
+  pch = 19,
+  ylab = ""
+)
+astsa::tsplot(
+  x = tempr,
+  main = "Temperature",
+  col = 4,
+  type = "o",
+  pch = 19,
+  ylab = ""
+)
+astsa::tsplot(
+  x = part,
+  main = "Particulates",
+  col = 2,
+  type = "o",
+  pch = 19,
+  ylab = ""
+)
+```
+
+Plot together 
+
+```{r}
+M_timeseries <- cbind(
+  Mortality = cmort,
+  Temperature = tempr,
+  Particulates = part
+)
+astsa::tsplot(
+  x = M_timeseries,
+  spag = TRUE,
+  ylab = "",
+  col = c(6,4,2)
+)
+legend(
+  x = "topright",
+  legend = c(
+    "Mortality","Temperature","Pollution"
+  ),
+  lty = 1,
+  lwd = 2,
+  col = c(6,4,2),
+  bg = "white"
+)
+```
+
+Scatterplot matrix
+
+```{r}
+panel.cor <- function(x, y, ...){
+  usr <- par("usr")
+  par(
+    usr = c(0, 1, 0, 1)
+  )
+  r <- round(
+    x = cor(
+      x = x,
+      y = y
+    ),
+    digits = 2
+  )
+  text(
+    x = 0.5,
+    y = 0.5,
+    labels = r,
+    cex = 1.75
+  )
+}
+pairs(
+  x = M_timeseries,
+  col = 4,
+  lower.panel = panel.cor
+)
+```
+
+#  Regression
+
+```{r}
+M_timeseries <- as.data.frame(
+  x = M_timeseries
+)
+M_timeseries[,"temp"]  <- M_timeseries[,"Temperature"]-mean(M_timeseries[,"Temperature"])  # center temperature    
+M_timeseries[,"temp_2"] <- M_timeseries$temp^2             # square it  
+M_timeseries[,"trend"] <- time(cmort)        # time
+lm_full = lm(
+  formula = Mortality ~ trend + temp + temp_2 + part,
+  data = M_timeseries,
+  na.action=NULL
+)
+summary(
+  object = lm_full
+)       # regression results
+summary(
+  object = aov(
+    formula = lm_full
+  )
+)  # ANOVA table   (compare to next line)
+trend <- time(
+  x = cmort
+)
+temp <- M_timeseries[,"Temperature"]-mean(M_timeseries[,"Temperature"])
+temp_2 <- temp^2
+summary(
+  object = aov(
+    formula = lm(
+      formula = cmort~cbind(trend, temp, temp_2, part)
+    )
+  )
+) # Table 2.1
+```
+
+compute fit statistics
+
+```{r}
+num = length(
+  x = cmort
+)                                     # sample size
+AIC(
+  object = lm_full
+)/num - log(2*pi)                                # AIC 
+BIC(
+  object = lm_full
+)/num - log(2*pi)                                # BIC   
+(
+  AICc <- log(
+    x = sum(
+      x = resid(
+        object = lm_full
+      )^2
+    )/num
+  ) + (num+5)/(num-5-2)
+) # AICc
+```
+
+Compare models
+
+na.action = NULL retains the time series attributes for other functions in R.
+
+```{r}
+list_lm <- list()
+list_lm[["full"]] <- lm(
+  formula = Mortality ~ trend + temp + temp_2 + part,
+  data = M_timeseries,
+  na.action=NULL
+)
+list_lm[["quadratic temperature"]] <- lm(
+  formula = Mortality ~ trend + temp + temp_2,
+  data = M_timeseries,
+  na.action=NULL
+)
+list_lm[["linear temperature"]] <- lm(
+  formula = Mortality ~ trend + temp,
+  data = M_timeseries,
+  na.action=NULL
+)
+list_lm[["trend only"]] <- lm(
+  formula = Mortality ~ trend,
+  data = M_timeseries,
+  na.action=NULL
+)
+list_lm[["constant"]] <- lm(
+  formula = Mortality ~ 1,
+  data = M_timeseries,
+  na.action=NULL
+)
+data.frame(
+  model = names(list_lm),
+  k = sapply(
+    X = list_lm,
+    FUN = function(model) length(
+      x = model$coefficients
+    )
+  ),
+  df = sapply(
+    X = list_lm,
+    FUN = function(model) model$df.residual
+  ),
+  logLik = sapply(
+    X = list_lm,
+    FUN = logLik
+  ),
+  AIC = sapply(
+    X = list_lm,
+    FUN = AIC
+  ),
+  BIC = sapply(
+    X = list_lm,
+    FUN = BIC
+  )
+)
+```
+
+```{r}
+# larger is better
+sort(sapply(
+  X = list_lm,
+  FUN = logLik
+))
+# least is better
+sort(sapply(
+  X = list_lm,
+  FUN = AIC
+))
+# least is better
+sort(sapply(
+  X = list_lm,
+  FUN = BIC
+))
+anova(
+  list_lm[["constant"]],
+  list_lm[["trend only"]],
+  list_lm[["linear temperature"]],
+  list_lm[["quadratic temperature"]],
+  list_lm[["full"]]
+)
+```
+
+# Example 2.3 Regression With Lagged Variables
+
+The Southern Oscillation Index (SOI) measured at time $t − 6$ months is associated with the Recruitment series at time $t$, indicating that the SOI leads the Recruitment series by six months.
+
+Consider the regression model:
+
+$$
+R_t = \beta_0 + \beta_1 S_{t-6} + w_t
+$$
+
+```{r}
+data(
+  list = c("rec","soi"),
+  package = "astsa"
+)
+fish <- ts.intersect(
+  rec,
+  soiL6 = lag(
+    x = soi,
+    k = -6
+  ),
+  dframe = TRUE
+)   
+lm_fish <- lm(
+  formula = rec ~ soiL6,
+  data = fish,
+  na.action = NULL
+)
+summary(
+  object = lm_fish
+)
+## not shown in text but resids are not white
+#par(mfrow=2:1)
+astsa::tsplot(
+  x = resid(
+    object = lm_fish
+  )
+)
+astsa::acf1(
+  series = resid(
+    object = lm_fish
+  )
+)
+```
+
+Another way to handle lagged inputs is with the dynlm package.
+
+```{r}
+merge.zoo <- zoo::merge.zoo
+lm_dynlm <- dynlm::dynlm(
+  formula = rec ~ L(soi,6)
+)
+lm_dynlm
+```
